@@ -2,7 +2,6 @@
 
 This repository wires together three Terraform modules to bootstrap a GCP project, set up a public ingress to a Cloud Run service, and provision networks.
 
-
 ---
 
 ## Prerequisites
@@ -22,46 +21,52 @@ Create a `main.tf` in the repo root with the following (replace placeholder valu
 
 ```hcl
 module "consumer_bootstrap" {
-  source = "./module/consumer-bootstrap"
-  project_id = "my-project"
-  region = "us-central1"
-  repository_id = "my-repo"
-  state_bucket_name = "my-project-tf-state"
+  source             = "./modules/consumer/bootstrap"
+  project_id         = "my-project"
+  region             = "us-central1"
+  repository_id      = "my-repo"
+  state_bucket_name  = "my-project-tf-state"
   service_account_id = "consumer-sa"
 
   # Optional:
-  location (defaults to "US")
-  repository_format (defaults to "DOCKER")
+  location          = "US"
+  repository_format = "DOCKER"
 }
 
-module "cosumer_ingress" {
-  source = "./module/cosumer-ingress"
-  project_id = "my-project"
-  region = "us-central1"
-  bucket_name = "static-bucket"
-  location = "US"
+module "consumer_ingress" {
+  source                 = "./modules/consumer/ingress"
+  project_id             = "my-project"
+  region                 = "us-central1"
+  bucket_name            = "static-bucket"
+  location               = "US"
   cloud_run_service_name = "api-service"
-  cloud_run_image = "gcr.io/my-project/my-image"
-  domain = "example.com"
-  member = "allUsers"    # or another principal
+  cloud_run_image        = "gcr.io/my-project/my-image"
+  domain                 = "example.com"
+  member                 = "allUsers"    # or another principal
 
   # Optional:
-  api_path (defaults to "/api/*")
+  api_path = "/api/*"
 }
 
 module "consumer_network" {
-  source = "./module/consumer-network"
+  source                      = "./modules/consumer/network"
+  project_id                  = "my-project"
+  region                      = "us-central1"
   external_proxy_network_name = "proxy-net"
-  internal_only_network_name = "internal-net"
-  firehose_network_name = "firehose-net"
+  internal_only_network_name  = "internal-net"
+  firehose_network_name       = "firehose-net"
 
   # Optional:
-  external_proxy_subnet_cidr
-  internal_only_subnet_cidr
-  firehose_subnet_cidr
+  external_proxy_subnet_cidr = "10.0.1.0/24"
+  internal_only_subnet_cidr  = "10.0.2.0/24"
+  firehose_subnet_cidr       = "10.0.3.0/24"
 }
+```
 
 Then run:
+
+```
 terraform init
 terraform plan
 terraform apply
+```
