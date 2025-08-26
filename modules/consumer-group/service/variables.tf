@@ -6,25 +6,12 @@ variable "region" {
   type = string
 }
 
-variable "bucket_name" {
-  type = string
-}
-
-variable "location" {
-  type = string
-}
-
 variable "cloud_run_service_name" {
   type = string
 }
 
-variable "domain" {
+variable "cloud_run_image" {
   type = string
-}
-
-variable "api_path" {
-  type    = string
-  default = "/api/*"
 }
 
 variable "member" {
