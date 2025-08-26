@@ -1,3 +1,8 @@
+resource "google_project_service" "run" {
+  project = var.project_id
+  service = "run.googleapis.com"
+}
+
 resource "google_cloud_run_service" "service" {
   project  = var.project_id
   name     = var.cloud_run_service_name
@@ -24,3 +29,4 @@ resource "google_cloud_run_service_iam_member" "invoker" {
   role     = "roles/run.invoker"
   member   = var.member
 }
+
