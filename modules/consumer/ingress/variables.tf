@@ -34,3 +34,14 @@ variable "api_path" {
 variable "member" {
   type = string
 }
+
+variable "enable_mtls" {
+  type    = bool
+  default = false
+}
+
+variable "client_ca" {
+  type        = string
+  default     = null
+  description = "PEM-encoded CA certificate for client authentication when mTLS is enabled"
+}
