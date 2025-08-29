@@ -46,6 +46,10 @@ module "consumer_ingress" {
 
   # Optional:
   api_path = "/api/*"
+
+  # Optional mTLS configuration:
+  # enable_mtls = true
+  # client_ca   = file("ca.pem")
 }
 
 module "consumer_network" {
