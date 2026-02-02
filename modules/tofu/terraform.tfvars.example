@@ -1,0 +1,48 @@
+project_id = "cce-foodmarks-3-mvp"
+region = "us-central1"
+service_name = "backend-service"
+developer_prefix = ""
+environment_prefix = ""
+
+# reCAPTCHA Enterprise configuration
+# Domains are automatically generated based on your resource prefix:
+# - Base: localhost, 127.0.0.1
+# - Developer: {prefix}-tccc-foodmarks.wttech.cloud, {prefix}-backend-service-*.run.app
+# - Production: Same as developer (when no developer_prefix)
+#
+# Optional: Add additional custom domains if needed
+# recaptcha_allowed_domains = [
+#   "custom.yourdomain.com"
+# ]
+# Leave empty or remove to use only auto-generated domains
+
+data_retrieval_user = "your_user"
+data_retrieval_password = "your_password"
+
+poe_config = <<-EOT
+{
+  "baseUrl":"https://poe-api.example.com",
+  "apiKey":"your-poe-api-key",
+  "promoPlusEnv":"env",
+  "appId":"your-app-id"
+}
+EOT
+promoplus_api_url = "[PROMOPLUS_URL]"
+promoplus_api_key = ""
+promoplus_config_id = "[PROMOTION ID]"
+promoplus_sts_key_id = "AKI..."
+promoplus_sts_secret = "..."
+promoplus_sts_region = "us-east-1"
+
+# Enable Cloud SQL Proxy for local development
+# true = public IP + IAM auth (for laptop access via proxy)
+# false = private VPC only (production)
+sql_proxy = true
+
+# Google Custom Search configuration (for image downloading)
+google_custom_search_api_key = "dummy_search_key"
+google_custom_search_engine_id = "dummy_search_id"
+
+# Ephemeral dev environment settings (see ./scripts/destroy.sh for workflow)
+is_production = false
+resource_suffix = "v1"
