@@ -28,7 +28,7 @@ locals {
   resource_name_prefix_secondary                          = format("%s-%s%s", var.environment, var.app_code, local.regional_prefixes[1])
   resource_name_prefix_global                             = format("%s-%s", var.environment, var.app_code)
   net_address_module_source                               = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-address?ref=${var.cloud_foundation_fabric_version}"
-  global_external_application_load_balancer_module_source = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-lb-app-ext?ref=${var.cloud_foundation_fabric_version}"
+  global_external_application_load_balancer_module_source = "./modules/net-lb-app-ext-compat"
   internal_application_load_balancer_module_source        = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-lb-app-int?ref=${var.cloud_foundation_fabric_version}"
   gcs_bucket_module_source                                = "git::https://github.com/terraform-google-modules/terraform-google-cloud-storage.git//modules/simple_bucket?ref=${var.cloud_storage_module_version}"
   secret_manager_module_source                            = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/secret-manager?ref=${var.cloud_foundation_fabric_version}"
@@ -821,6 +821,7 @@ module "lb_marketing_api_edge" {
   count                 = var.create_lb_marketing_api_edge ? 1 : 0
   source                = local.global_external_application_load_balancer_module_source
   project_id            = var.mgmt_project_id
+  fabric_version        = var.cloud_foundation_fabric_version
   lb_name               = "${local.resource_name_prefix_global}-lb-marketing-api-edge"
   load_balancing_scheme = "EXTERNAL_MANAGED"
   https_redirect        = true
@@ -948,6 +949,7 @@ module "lb_dedicated_api_edge" {
   count                 = var.create_lb_dedicated_api_edge ? 1 : 0
   source                = local.global_external_application_load_balancer_module_source
   project_id            = var.project_id
+  fabric_version        = var.cloud_foundation_fabric_version
   lb_name               = "${local.resource_name_prefix_global}-lb-dedicated-api-edge"
   load_balancing_scheme = "EXTERNAL_MANAGED"
   https_redirect        = true
