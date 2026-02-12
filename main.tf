@@ -17,27 +17,110 @@ locals {
   zone   = local.zone_by_geo_type[upper(var.geo)]
 
   # Whether to create primary/secondary region specific resources. There will be no secondary regions in alpha and beta env
-  deploy_primary   = contains(["gamma", "prod"], lower(var.environment)) ? var.deploy_primary : true
-  deploy_secondary = contains(["gamma", "prod"], lower(var.environment)) ? var.deploy_secondary : false
+  deploy_primary        = contains(["gamma", "prod"], lower(var.environment)) ? var.deploy_primary : true
+  deploy_secondary      = contains(["gamma", "prod"], lower(var.environment)) ? var.deploy_secondary : false
   spanner_instance_name = "${local.resource_name_prefix_global}-spn-main-instance"
   spanner_database_name = var.spn_main_instance_consumer_db.name
 
   # For gamma and prod, assign regional prefixes. For other environments, keep prefixes empty.
-  regional_prefixes              = contains(["gamma", "prod"], lower(var.environment)) ? ["-pri", "-sec"] : ["", ""]
-  resource_name_prefix_primary   = format("%s-%s%s", var.environment, var.app_code, local.regional_prefixes[0])
-  resource_name_prefix_secondary = format("%s-%s%s", var.environment, var.app_code, local.regional_prefixes[1])
-  resource_name_prefix_global    = format("%s-%s", var.environment, var.app_code)
-  net_address_module_source      = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-address?ref=v52.0.0"
-  global_external_application_load_balancer_module_source = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-lb-app-ext?ref=v52.0.0"
-  internal_application_load_balancer_module_source        = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-lb-app-int?ref=v52.0.0"
-  gcs_bucket_module_source       = "git::https://github.com/terraform-google-modules/terraform-google-cloud-storage.git//modules/simple_bucket?ref=v11.0.0"
-  secret_manager_module_source   = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/secret-manager?ref=v52.0.0"
-  firestore_module_source        = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/firestore?ref=v52.0.0"
-  certificate_manager_module_source = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/certificate-manager?ref=v52.0.0"
-  spanner_instance_module_source = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/spanner-instance?ref=v52.0.0"
-  spanner_backup_module_source   = "git::https://github.com/GoogleCloudPlatform/terraform-google-cloud-spanner.git//modules/schedule_spanner_backup?ref=v1.2.1"
-  cloud_armor_module_source      = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-cloud-armor?ref=v52.0.0"
-  memorystore_valkey_module_source = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/memorystore?ref=v52.0.0"
+  regional_prefixes                                       = contains(["gamma", "prod"], lower(var.environment)) ? ["-pri", "-sec"] : ["", ""]
+  resource_name_prefix_primary                            = format("%s-%s%s", var.environment, var.app_code, local.regional_prefixes[0])
+  resource_name_prefix_secondary                          = format("%s-%s%s", var.environment, var.app_code, local.regional_prefixes[1])
+  resource_name_prefix_global                             = format("%s-%s", var.environment, var.app_code)
+  net_address_module_source                               = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-address?ref=${var.cloud_foundation_fabric_version}"
+  global_external_application_load_balancer_module_source = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-lb-app-ext?ref=${var.cloud_foundation_fabric_version}"
+  internal_application_load_balancer_module_source        = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-lb-app-int?ref=${var.cloud_foundation_fabric_version}"
+  gcs_bucket_module_source                                = "git::https://github.com/terraform-google-modules/terraform-google-cloud-storage.git//modules/simple_bucket?ref=${var.cloud_storage_module_version}"
+  secret_manager_module_source                            = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/secret-manager?ref=${var.cloud_foundation_fabric_version}"
+  firestore_module_source                                 = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/firestore?ref=${var.cloud_foundation_fabric_version}"
+  certificate_manager_module_source                       = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/certificate-manager?ref=${var.cloud_foundation_fabric_version}"
+  spanner_instance_module_source                          = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/spanner-instance?ref=${var.cloud_foundation_fabric_version}"
+  spanner_backup_module_source                            = "git::https://github.com/GoogleCloudPlatform/terraform-google-cloud-spanner.git//modules/schedule_spanner_backup?ref=${var.cloud_spanner_module_version}"
+  cloud_armor_module_source                               = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-cloud-armor?ref=${var.cloud_foundation_fabric_version}"
+  memorystore_valkey_module_source                        = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/memorystore?ref=${var.cloud_foundation_fabric_version}"
+
+
+  secret_manager_entries = {
+    vkey_creds = {
+      secret_suffix = "sm-vkey-creds"
+      data          = var.sm_vkey_creds_secret_data
+    }
+    fraud_configs = {
+      secret_suffix = "sm-fraud-configs"
+      data          = var.sm_fraud_configs_secret_data
+    }
+    gateway_creds = {
+      secret_suffix = "sm-gateway-creds"
+      data          = var.sm_gateway_creds_secret_data
+    }
+    meta_access_token = {
+      secret_suffix = "sm-meta-access-token"
+      data          = var.sm_meta_access_token_secret_data
+    }
+    meta_verify_token = {
+      secret_suffix = "sm-meta-verify-token"
+      data          = var.sm_meta_verify_token_secret_data
+    }
+    recaptcha_config = {
+      secret_suffix = "sm-recaptcha-config"
+      data          = var.sm_recaptcha_config_secret_data
+    }
+    prospect_ingestion_oauth_parameter = {
+      secret_suffix = "sm-prospect-ingestion-oauth-parameter"
+      data          = var.sm_prospect_ingestion_oauth_parameter_secret_data
+    }
+  }
+
+  gcs_bucket_entries = {
+    exp_configs = {
+      name_suffix = "gcs-exp-configs"
+      config      = var.gcs_exp_configs
+    }
+    exp_templates = {
+      name_suffix = "gcs-exp-templates"
+      config      = var.gcs_exp_templates
+    }
+    prospect_configs = {
+      name_suffix = "gcs-prospect-configs"
+      config      = var.gcs_prospect_configs
+    }
+    prospect_dropzone = {
+      name_suffix = "gcs-prospect-dropzone"
+      config      = var.gcs_prospect_dropzone
+    }
+    privacy_configs = {
+      name_suffix = "gcs-privacy-configs"
+      config      = var.gcs_privacy_configs
+    }
+    privacy_consumer_archive = {
+      name_suffix = "gcs-privacy-consumer-archive"
+      config      = var.gcs_privacy_consumer_archive
+    }
+    aad_b2c_event_dropzone = {
+      name_suffix = "gcs-aad-b2c-event-dropzone"
+      config      = var.gcs_aadb2c_event_dropzone
+    }
+    aad_b2c_component_cdn = {
+      name_suffix = "gcs-aad-b2c-component-cdn"
+      config      = var.gcs_aad_b2c_component_cdn
+    }
+    aad_b2c_component_demo = {
+      name_suffix = "gcs-aad-b2c-component-demo"
+      config      = var.gcs_aad_b2c_component_demo
+    }
+    aad_b2c_component_account = {
+      name_suffix = "gcs-aad-b2c-component-account"
+      config      = var.gcs_aad_b2c_component_account
+    }
+    consumer_gamv2_demo_site = {
+      name_suffix = "gcs-consumer-gamv2-demo-site"
+      config      = var.gcs_consumer_gamv2_demo_site
+    }
+    processor_configs = {
+      name_suffix = "gcs-processor-configs"
+      config      = var.gcs_processor_configs
+    }
+  }
 
   # Global External Application LB - Marketing API Edge 
   marketing_api_edge_serverless_backend_services = {
@@ -586,245 +669,33 @@ data "google_compute_subnetwork" "psc_subnet_secondary" {
   region  = local.region["SECONDARY"]
 }
 
-module "sm_vkey_creds" {
+module "secret_manager" {
+  for_each   = local.secret_manager_entries
   source     = local.secret_manager_module_source
   project_id = var.project_id
   secrets = {
-    "${local.resource_name_prefix_global}-sm-vkey-creds" = {
+    "${local.resource_name_prefix_global}-${each.value.secret_suffix}" = {
       deletion_protection = false
       versions = {
         default = {
-          data = var.sm_vkey_creds_secret_data
+          data = each.value.data
         }
       }
     }
   }
 }
 
-module "sm_fraud_configs" {
-  source     = local.secret_manager_module_source
-  project_id = var.project_id
-  secrets = {
-    "${local.resource_name_prefix_global}-sm-fraud-configs" = {
-      deletion_protection = false
-      versions = {
-        default = {
-          data = var.sm_fraud_configs_secret_data
-        }
-      }
-    }
-  }
+module "gcs_buckets" {
+  for_each                 = local.gcs_bucket_entries
+  source                   = local.gcs_bucket_module_source
+  project_id               = var.project_id
+  name                     = "${local.resource_name_prefix_global}-${each.value.name_suffix}"
+  location                 = each.value.config.location
+  public_access_prevention = each.value.config.public_access_prevention
+  bucket_policy_only       = each.value.config.uniform_bucket_level_access
+  force_destroy            = each.value.config.force_destroy
 }
 
-module "sm_gateway_creds" {
-  source     = local.secret_manager_module_source
-  project_id = var.project_id
-  secrets = {
-    "${local.resource_name_prefix_global}-sm-gateway-creds" = {
-      deletion_protection = false
-      versions = {
-        default = {
-          data = var.sm_gateway_creds_secret_data
-        }
-      }
-    }
-  }
-}
-
-module "sm_meta_access_token" {
-  source     = local.secret_manager_module_source
-  project_id = var.project_id
-  secrets = {
-    "${local.resource_name_prefix_global}-sm-meta-access-token" = {
-      deletion_protection = false
-      versions = {
-        default = {
-          data = var.sm_meta_access_token_secret_data
-        }
-      }
-    }
-  }
-}
-
-module "sm_meta_verify_token" {
-  source     = local.secret_manager_module_source
-  project_id = var.project_id
-  secrets = {
-    "${local.resource_name_prefix_global}-sm-meta-verify-token" = {
-      deletion_protection = false
-      versions = {
-        default = {
-          data = var.sm_meta_verify_token_secret_data
-        }
-      }
-    }
-  }
-}
-
-module "sm_recaptcha_config" {
-  source     = local.secret_manager_module_source
-  project_id = var.project_id
-  secrets = {
-    "${local.resource_name_prefix_global}-sm-recaptcha-config" = {
-      deletion_protection = false
-      versions = {
-        default = {
-          data = var.sm_recaptcha_config_secret_data
-        }
-      }
-    }
-  }
-}
-
-module "sm_prospect_ingestion_oauth_parameter" {
-  source     = local.secret_manager_module_source
-  project_id = var.project_id
-  secrets = {
-    "${local.resource_name_prefix_global}-sm-prospect-ingestion-oauth-parameter" = {
-      deletion_protection = false
-      versions = {
-        default = {
-          data = var.sm_prospect_ingestion_oauth_parameter_secret_data
-        }
-      }
-    }
-  }
-}
-
-# GCS Bucket Exp Configs - AADB2C, Frontend,Enrichment, Internal
-module "gcs_exp_configs" {
-  source                      = local.gcs_bucket_module_source
-  project_id                  = var.project_id
-  name                        = "${local.resource_name_prefix_global}-gcs-exp-configs"
-  location                    = var.gcs_exp_configs.location
-  public_access_prevention    = var.gcs_exp_configs.public_access_prevention
-  bucket_policy_only          = var.gcs_exp_configs.uniform_bucket_level_access
-  force_destroy               = var.gcs_exp_configs.force_destroy
-}
-
-# GCS Bucket Exp Configs - Message
-module "gcs_exp_templates" {
-  source                      = local.gcs_bucket_module_source
-  project_id                  = var.project_id
-  name                        = "${local.resource_name_prefix_global}-gcs-exp-templates"
-  location                    = var.gcs_exp_templates.location
-  public_access_prevention    = var.gcs_exp_templates.public_access_prevention
-  bucket_policy_only          = var.gcs_exp_templates.uniform_bucket_level_access
-  force_destroy               = var.gcs_exp_templates.force_destroy
-}
-
-# GCS Bucket Prospect Configs - Prospect
-module "gcs_prospect_configs" {
-  source                      = local.gcs_bucket_module_source
-  project_id                  = var.project_id
-  name                        = "${local.resource_name_prefix_global}-gcs-prospect-configs"
-  location                    = var.gcs_prospect_configs.location
-  public_access_prevention    = var.gcs_prospect_configs.public_access_prevention
-  bucket_policy_only          = var.gcs_prospect_configs.uniform_bucket_level_access
-  force_destroy               = var.gcs_prospect_configs.force_destroy
-}
-
-# GCS Bucket Prospect Dropzone - Prospect
-module "gcs_prospect_dropzone" {
-  source                      = local.gcs_bucket_module_source
-  project_id                  = var.project_id
-  name                        = "${local.resource_name_prefix_global}-gcs-prospect-dropzone"
-  location                    = var.gcs_prospect_dropzone.location
-  public_access_prevention    = var.gcs_prospect_dropzone.public_access_prevention
-  bucket_policy_only          = var.gcs_prospect_dropzone.uniform_bucket_level_access
-  force_destroy               = var.gcs_prospect_dropzone.force_destroy
-}
-
-# GCS Bucket Privacy Configs - Privacy
-module "gcs_privacy_configs" {
-  source                      = local.gcs_bucket_module_source
-  project_id                  = var.project_id
-  name                        = "${local.resource_name_prefix_global}-gcs-privacy-configs"
-  location                    = var.gcs_privacy_configs.location
-  public_access_prevention    = var.gcs_privacy_configs.public_access_prevention
-  bucket_policy_only          = var.gcs_privacy_configs.uniform_bucket_level_access
-  force_destroy               = var.gcs_privacy_configs.force_destroy
-}
-
-# GCS Bucket Privacy Configs - Privacy
-module "gcs_privacy_consumer_archive" {
-  source                      = local.gcs_bucket_module_source
-  project_id                  = var.project_id
-  name                        = "${local.resource_name_prefix_global}-gcs-privacy-consumer-archive"
-  location                    = var.gcs_privacy_consumer_archive.location
-  public_access_prevention    = var.gcs_privacy_consumer_archive.public_access_prevention
-  bucket_policy_only          = var.gcs_privacy_consumer_archive.uniform_bucket_level_access
-  force_destroy               = var.gcs_privacy_consumer_archive.force_destroy
-}
-
-# GCS Bucket AADB2C Event Dropzone - AADB2C Reporting
-module "gcs_aad_b2c_event_dropzone" {
-  source                      = local.gcs_bucket_module_source
-  project_id                  = var.project_id
-  name                        = "${local.resource_name_prefix_global}-gcs-aad-b2c-event-dropzone"
-  location                    = var.gcs_aadb2c_event_dropzone.location
-  public_access_prevention    = var.gcs_aadb2c_event_dropzone.public_access_prevention
-  bucket_policy_only          = var.gcs_aadb2c_event_dropzone.uniform_bucket_level_access
-  force_destroy               = var.gcs_aadb2c_event_dropzone.force_destroy
-}
-
-# Temporary START
-# GCS Bucket cds-gcs-aad-b2c-components-cdn
-module "gcs_aad_b2c_component_cdn" {
-  source                      = local.gcs_bucket_module_source
-  project_id                  = var.project_id
-  name                        = "${local.resource_name_prefix_global}-gcs-aad-b2c-component-cdn"
-  location                    = var.gcs_aad_b2c_component_cdn.location
-  public_access_prevention    = var.gcs_aad_b2c_component_cdn.public_access_prevention
-  bucket_policy_only          = var.gcs_aad_b2c_component_cdn.uniform_bucket_level_access
-  force_destroy               = var.gcs_aad_b2c_component_cdn.force_destroy
-}
- 
-# GCS Bucket cds-gcs-aad-b2c-components-demo
-module "gcs_aad_b2c_component_demo" {
-  source                      = local.gcs_bucket_module_source
-  project_id                  = var.project_id
-  name                        = "${local.resource_name_prefix_global}-gcs-aad-b2c-component-demo"
-  location                    = var.gcs_aad_b2c_component_demo.location
-  public_access_prevention    = var.gcs_aad_b2c_component_demo.public_access_prevention
-  bucket_policy_only          = var.gcs_aad_b2c_component_demo.uniform_bucket_level_access
-  force_destroy               = var.gcs_aad_b2c_component_demo.force_destroy
-}
- 
-# GCS Bucket cds-gcs-aad-b2c-components-account
-module "gcs_aad_b2c_component_account" {
-  source                      = local.gcs_bucket_module_source
-  project_id                  = var.project_id
-  name                        = "${local.resource_name_prefix_global}-gcs-aad-b2c-component-account"
-  location                    = var.gcs_aad_b2c_component_account.location
-  public_access_prevention    = var.gcs_aad_b2c_component_account.public_access_prevention
-  bucket_policy_only          = var.gcs_aad_b2c_component_account.uniform_bucket_level_access
-  force_destroy               = var.gcs_aad_b2c_component_account.force_destroy
-}
- 
-# GCS Bucket gcs-consumer-gamv2-demo-site
-module "gcs_consumer_gamv2_demo_site" {
-  source                      = local.gcs_bucket_module_source
-  project_id                  = var.project_id
-  name                        = "${local.resource_name_prefix_global}-gcs-consumer-gamv2-demo-site"
-  location                    = var.gcs_consumer_gamv2_demo_site.location
-  public_access_prevention    = var.gcs_consumer_gamv2_demo_site.public_access_prevention
-  bucket_policy_only          = var.gcs_consumer_gamv2_demo_site.uniform_bucket_level_access
-  force_destroy               = var.gcs_consumer_gamv2_demo_site.force_destroy
-}
- 
-# GCS Bucket gcs-processor-configs - Dataprocessor services
-module "gcs_processor_configs" {
-  source                      = local.gcs_bucket_module_source
-  project_id                  = var.project_id
-  name                        = "${local.resource_name_prefix_global}-gcs-processor-configs"
-  location                    = var.gcs_processor_configs.location
-  public_access_prevention    = var.gcs_processor_configs.public_access_prevention
-  bucket_policy_only          = var.gcs_processor_configs.uniform_bucket_level_access
-  force_destroy               = var.gcs_processor_configs.force_destroy
-}
-# Temporary END
- 
 # Firestore - Privacy
 module "fs_main_database" {
   source     = local.firestore_module_source
@@ -1105,7 +976,7 @@ module "lb_dedicated_api_edge" {
   }
   backend_buckets = {
     gcs = {
-      bucket_name = module.gcs_exp_configs.name
+      bucket_name = module.gcs_buckets["exp_configs"].name
       enable_cdn  = true
       cdn_policy = {
         cache_mode  = "CACHE_ALL_STATIC"
@@ -1138,9 +1009,9 @@ module "lb_dedicated_api_edge" {
 
 # Internal Address
 module "ip_marketing_ilb_primary" {
-  count                = contains(["alpha", "beta", "gamma", "prod"], lower(var.environment)) ? 1 : 0
-  source               = local.net_address_module_source
-  project_id           = var.project_id
+  count      = contains(["alpha", "beta", "gamma", "prod"], lower(var.environment)) ? 1 : 0
+  source     = local.net_address_module_source
+  project_id = var.project_id
   internal_addresses = {
     "${local.resource_name_prefix_primary}-ip-marketing" = {
       region     = local.region["PRIMARY"]
@@ -1151,9 +1022,9 @@ module "ip_marketing_ilb_primary" {
 }
 
 module "ip_marketing_ilb_secondary" {
-  count                = contains(["gamma", "prod"], lower(var.environment)) ? 1 : 0
-  source               = local.net_address_module_source
-  project_id           = var.project_id
+  count      = contains(["gamma", "prod"], lower(var.environment)) ? 1 : 0
+  source     = local.net_address_module_source
+  project_id = var.project_id
   internal_addresses = {
     "${local.resource_name_prefix_secondary}-ip-marketing" = {
       region     = local.region["SECONDARY"]
@@ -1288,8 +1159,8 @@ module "lb_marketing_primary" {
   }
 
   service_attachment = {
-    nat_subnets          = [data.google_compute_subnetwork.psc_subnet_primary[0].id]
-    automatic_connection = true
+    nat_subnets           = [data.google_compute_subnetwork.psc_subnet_primary[0].id]
+    automatic_connection  = true
     enable_proxy_protocol = false
   }
 }
@@ -1349,7 +1220,7 @@ module "lb_marketing_secondary" {
 
   urlmap_config = {
     default_service = "frontend-get-consumer"
-    host_rules = [{ hosts = ["*"], path_matcher = "api-paths" }]
+    host_rules      = [{ hosts = ["*"], path_matcher = "api-paths" }]
     path_matchers = {
       api-paths = {
         default_service = "frontend-get-consumer"
