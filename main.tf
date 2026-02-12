@@ -1,15 +1,15 @@
 locals {
   region_by_geo_type = {
     "PRODUCT" = {
-      "PRIMARY"   = "us-central1"
-      "SECONDARY" = "us-east1"
+      "PRIMARY"   = var.region_by_geo_type["PRODUCT"].PRIMARY
+      "SECONDARY" = var.zone_by_geo_type["PRODUCT"].PRIMARY
     }
   }
 
   zone_by_geo_type = {
     "PRODUCT" = {
-      "PRIMARY"   = "us-central1-a"
-      "SECONDARY" = "us-east1-b"
+      "PRIMARY"   = var.region_by_geo_type["PRODUCT"].SECONDARY
+      "SECONDARY" = var.zone_by_geo_type["PRODUCT"].SECONDARY
     }
   }
 
