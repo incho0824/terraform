@@ -27,7 +27,7 @@ locals {
   resource_name_prefix_primary   = format("%s-%s%s", var.environment, var.app_code, local.regional_prefixes[0])
   resource_name_prefix_secondary = format("%s-%s%s", var.environment, var.app_code, local.regional_prefixes[1])
   resource_name_prefix_global    = format("%s-%s", var.environment, var.app_code)
-  modules_source_repo            = "git::https://github.com/The-Coca-Cola-Company/consumer-terraform-modules.git//opentofu/modules"
+  net_address_module_source      = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-address?ref=v52.0.0"
   global_external_application_load_balancer_module_source = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-lb-app-ext?ref=v52.0.0"
   internal_application_load_balancer_module_source        = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-lb-app-int?ref=v52.0.0"
   gcs_bucket_module_source       = "git::https://github.com/terraform-google-modules/terraform-google-cloud-storage.git//modules/simple_bucket?ref=v11.0.0"
@@ -903,9 +903,11 @@ module "spn_main_instance_consumer_db_backup" {
 # [ Marketing API Edge START ]
 # Reserved External IP - ip-marketing-api-edge
 module "ip_marketing_api_edge" {
-  source     = "${local.modules_source_repo}/global_external_address"
+  source     = local.net_address_module_source
   project_id = var.mgmt_project_id
-  name       = "${local.resource_name_prefix_global}-ip-marketing-api-edge"
+  global_addresses = {
+    "${local.resource_name_prefix_global}-ip-marketing-api-edge" = {}
+  }
 }
 
 # Cloud Armor - ca-marketing-api-security
@@ -953,7 +955,7 @@ module "lb_marketing_api_edge" {
   https_redirect        = true
   ssl                   = true
   certificate_map       = "//certificatemanager.googleapis.com/${module.certificate_manager_marketing_api_edge.map_id}"
-  ip_address            = module.ip_marketing_api_edge.id
+  ip_address            = module.ip_marketing_api_edge.global_addresses["${local.resource_name_prefix_global}-ip-marketing-api-edge"].id
   default_service_key   = local.marketing_api_edge_path_matchers["api-paths"].default_service
 
   backends = {
@@ -1014,9 +1016,11 @@ module "prospect_api_security" {
 # [ Dedicated API Edge START ]
 # Reserved IP - dedicated-api-edge
 module "ip_dedicated_api_edge" {
-  source     = "${local.modules_source_repo}/global_external_address"
+  source     = local.net_address_module_source
   project_id = var.project_id
-  name       = "${local.resource_name_prefix_global}-ip-dedicated-api-edge"
+  global_addresses = {
+    "${local.resource_name_prefix_global}-ip-dedicated-api-edge" = {}
+  }
 }
 
 # Cloud Armor - ca-aad-b2c-api-security
@@ -1078,7 +1082,7 @@ module "lb_dedicated_api_edge" {
   https_redirect        = true
   ssl                   = true
   certificate_map       = "//certificatemanager.googleapis.com/${module.certificate_manager_dedicated_api_edge.map_id}"
-  ip_address            = module.ip_dedicated_api_edge.id
+  ip_address            = module.ip_dedicated_api_edge.global_addresses["${local.resource_name_prefix_global}-ip-dedicated-api-edge"].id
   default_service_key   = local.dedicated_api_edge_path_matchers["api-paths"].default_service
 
   backends = {
@@ -1135,22 +1139,28 @@ module "lb_dedicated_api_edge" {
 # Internal Address
 module "ip_marketing_ilb_primary" {
   count                = contains(["alpha", "beta", "gamma", "prod"], lower(var.environment)) ? 1 : 0
-  source               = "${local.modules_source_repo}/internal_address"
-  name                 = "${local.resource_name_prefix_primary}-ip-marketing"
+  source               = local.net_address_module_source
   project_id           = var.project_id
-  region               = local.region["PRIMARY"]
-  address              = "10.0.8.150"
-  subnetwork_self_link = data.google_compute_subnetwork.ilb_subnet_primary[0].self_link
+  internal_addresses = {
+    "${local.resource_name_prefix_primary}-ip-marketing" = {
+      region     = local.region["PRIMARY"]
+      address    = "10.0.8.150"
+      subnetwork = data.google_compute_subnetwork.ilb_subnet_primary[0].self_link
+    }
+  }
 }
 
 module "ip_marketing_ilb_secondary" {
   count                = contains(["gamma", "prod"], lower(var.environment)) ? 1 : 0
-  source               = "${local.modules_source_repo}/internal_address"
-  name                 = "${local.resource_name_prefix_secondary}-ip-marketing"
+  source               = local.net_address_module_source
   project_id           = var.project_id
-  region               = local.region["SECONDARY"]
-  address              = "10.0.8.250"
-  subnetwork_self_link = data.google_compute_subnetwork.ilb_subnet_secondary[0].self_link
+  internal_addresses = {
+    "${local.resource_name_prefix_secondary}-ip-marketing" = {
+      region     = local.region["SECONDARY"]
+      address    = "10.0.8.250"
+      subnetwork = data.google_compute_subnetwork.ilb_subnet_secondary[0].self_link
+    }
+  }
 }
 
 # [PRIMARY START]
@@ -1173,180 +1183,117 @@ module "vkey_main_primary" {
 }
 
 # [ Internal Application LB - Marketing START ]
-data "google_cloud_run_v2_service" "frontend_update_consumer_primary" {
-  count    = local.deploy_primary && var.create_lb_marketing_primary ? 1 : 0
-  project  = var.project_id
-  location = local.region["PRIMARY"]
-  name     = "${local.resource_name_prefix_primary}-run-frontend-update-consumer"
-}
-
-# Serverless NEG 
-module "serverless_neg_run_frontend_update_consumer_primary" {
-  count      = local.deploy_primary && var.create_lb_marketing_primary ? 1 : 0
-  source     = "${local.modules_source_repo}/region_network_endpoint_group"
-  name       = "${local.resource_name_prefix_primary}-neg-frontend-update-consumer"
-  project_id = var.project_id
-  region     = local.region["PRIMARY"]
-  cloud_run = {
-    service = data.google_cloud_run_v2_service.frontend_update_consumer_primary[0].name
-  }
-}
-
-data "google_cloud_run_v2_service" "frontend_get_consumer_primary" {
-  count    = local.deploy_primary && var.create_lb_marketing_primary ? 1 : 0
-  project  = var.project_id
-  location = local.region["PRIMARY"]
-  name     = "${local.resource_name_prefix_primary}-run-frontend-get-consumer"
-}
-
-# Serverless NEG
-module "serverless_neg_run_frontend_get_consumer_primary" {
-  count      = local.deploy_primary && var.create_lb_marketing_primary ? 1 : 0
-  source     = "${local.modules_source_repo}/region_network_endpoint_group"
-  name       = "${local.resource_name_prefix_primary}-neg-frontend-get-consumer"
-  project_id = var.project_id
-  region     = local.region["PRIMARY"]
-  cloud_run = {
-    service = data.google_cloud_run_v2_service.frontend_get_consumer_primary[0].name
-  }
-}
-
-data "google_cloud_run_v2_service" "message_event_processor_primary" {
-  count    = local.deploy_primary && var.create_lb_marketing_primary ? 1 : 0
-  project  = var.project_id
-  location = local.region["PRIMARY"]
-  name     = "${local.resource_name_prefix_primary}-run-message-event-processor"
-}
-
-# Serverless NEG
-module "serverless_neg_run_message_event_processor_primary" {
-  count      = local.deploy_primary && var.create_lb_marketing_primary ? 1 : 0
-  source     = "${local.modules_source_repo}/region_network_endpoint_group"
-  name       = "${local.resource_name_prefix_primary}-neg-message-event-processor"
-  project_id = var.project_id
-  region     = local.region["PRIMARY"]
-  cloud_run = {
-    service = data.google_cloud_run_v2_service.message_event_processor_primary[0].name
-  }
-}
-
-data "google_cloud_run_v2_service" "enrichment_get_data_primary" {
-  count    = local.deploy_primary && var.create_lb_marketing_primary ? 1 : 0
-  project  = var.project_id
-  location = local.region["PRIMARY"]
-  name     = "${local.resource_name_prefix_primary}-run-enrichment-get-data"
-}
-
-# Serverless NEG
-module "serverless_neg_run_enrichment_get_data_primary" {
-  count      = local.deploy_primary && var.create_lb_marketing_primary ? 1 : 0
-  source     = "${local.modules_source_repo}/region_network_endpoint_group"
-  name       = "${local.resource_name_prefix_primary}-neg-enrichment-get-data"
-  project_id = var.project_id
-  region     = local.region["PRIMARY"]
-  cloud_run = {
-    service = data.google_cloud_run_v2_service.enrichment_get_data_primary[0].name
-  }
-}
-
-data "google_cloud_run_v2_service" "enrichment_put_data_primary" {
-  count    = local.deploy_primary && var.create_lb_marketing_primary ? 1 : 0
-  project  = var.project_id
-  location = local.region["PRIMARY"]
-  name     = "${local.resource_name_prefix_primary}-run-enrichment-put-data"
-}
-
-# Serverless NEG
-module "serverless_neg_run_enrichment_put_data_primary" {
-  count      = local.deploy_primary && var.create_lb_marketing_primary ? 1 : 0
-  source     = "${local.modules_source_repo}/region_network_endpoint_group"
-  name       = "${local.resource_name_prefix_primary}-neg-enrichment-put-data"
-  project_id = var.project_id
-  region     = local.region["PRIMARY"]
-  cloud_run = {
-    service = data.google_cloud_run_v2_service.enrichment_put_data_primary[0].name
-  }
-}
-
-# Internal Application LB
+# Internal Application LB - Marketing (primary)
 module "lb_marketing_primary" {
-  count                = local.deploy_primary && var.create_lb_marketing_primary ? 1 : 0
-  source               = local.internal_application_load_balancer_module_source
-  project_id           = var.project_id
-  region               = local.region["PRIMARY"]
-  lb_name              = "${local.resource_name_prefix_primary}-lb-marketing"
-  subnetwork_self_link = data.google_compute_subnetwork.ilb_subnet_primary[0].self_link
-  ip_address           = module.ip_marketing_ilb_primary[0].id
-  protocol             = "HTTP"
-  ip_protocol          = "TCP"
-  port_range           = "80"
-  default_backend_key  = "frontend-update-consumer"
+  count      = local.deploy_primary && var.create_lb_marketing_primary ? 1 : 0
+  source     = local.internal_application_load_balancer_module_source
+  project_id = var.project_id
+  region     = local.region["PRIMARY"]
+  name       = "${local.resource_name_prefix_primary}-lb-marketing"
+  address    = module.ip_marketing_ilb_primary[0].internal_addresses["${local.resource_name_prefix_primary}-ip-marketing"].address
+  protocol   = "HTTP"
+  ports      = ["80"]
 
-  backends = {
+  backend_service_configs = {
     frontend-update-consumer = {
-      group = module.serverless_neg_run_frontend_update_consumer_primary[0].id
-    },
+      health_checks = []
+      backends      = [{ group = "frontend-update-consumer" }]
+    }
     frontend-get-consumer = {
-      group = module.serverless_neg_run_frontend_get_consumer_primary[0].id
-    },
+      health_checks = []
+      backends      = [{ group = "frontend-get-consumer" }]
+    }
     message-event-processor = {
-      group = module.serverless_neg_run_message_event_processor_primary[0].id
-    },
+      health_checks = []
+      backends      = [{ group = "message-event-processor" }]
+    }
     enrichment-get-data = {
-      group = module.serverless_neg_run_enrichment_get_data_primary[0].id
-    },
+      health_checks = []
+      backends      = [{ group = "enrichment-get-data" }]
+    }
     enrichment-put-data = {
-      group = module.serverless_neg_run_enrichment_put_data_primary[0].id
+      health_checks = []
+      backends      = [{ group = "enrichment-put-data" }]
     }
   }
-  host_rules = [
-    {
+
+  health_check_configs = {}
+
+  neg_configs = {
+    frontend-update-consumer = {
+      cloudrun = {
+        region = local.region["PRIMARY"]
+        target_service = {
+          name = format("%s-run-frontend-update-consumer", local.resource_name_prefix_primary)
+        }
+      }
+    }
+    frontend-get-consumer = {
+      cloudrun = {
+        region = local.region["PRIMARY"]
+        target_service = {
+          name = format("%s-run-frontend-get-consumer", local.resource_name_prefix_primary)
+        }
+      }
+    }
+    message-event-processor = {
+      cloudrun = {
+        region = local.region["PRIMARY"]
+        target_service = {
+          name = format("%s-run-message-event-processor", local.resource_name_prefix_primary)
+        }
+      }
+    }
+    enrichment-get-data = {
+      cloudrun = {
+        region = local.region["PRIMARY"]
+        target_service = {
+          name = format("%s-run-enrichment-get-data", local.resource_name_prefix_primary)
+        }
+      }
+    }
+    enrichment-put-data = {
+      cloudrun = {
+        region = local.region["PRIMARY"]
+        target_service = {
+          name = format("%s-run-enrichment-put-data", local.resource_name_prefix_primary)
+        }
+      }
+    }
+  }
+
+  vpc_config = {
+    network    = data.google_compute_network.network.self_link
+    subnetwork = data.google_compute_subnetwork.ilb_subnet_primary[0].self_link
+  }
+
+  urlmap_config = {
+    default_service = "frontend-get-consumer"
+    host_rules = [{
       hosts        = ["*"]
       path_matcher = "api-paths"
-    }
-  ]
-  path_matchers = {
-    "api-paths" = {
-      default_service = "${local.resource_name_prefix_global}-lb-marketing-frontend-get-consumer"
-      rules = [
-        {
-          paths   = ["/v2/consumers/update"]
-          service = "${local.resource_name_prefix_global}-lb-marketing-frontend-update-consumer"
-        },
-        {
-          paths   = ["/v2/consumers"]
-          service = "${local.resource_name_prefix_global}-lb-marketing-frontend-get-consumer"
-        },
-        {
-          paths   = ["/message-event-processor/*"]
-          service = "${local.resource_name_prefix_global}-lb-marketing-message-event-processor"
-        },
-        {
-          paths   = ["/enrichment-get-data/*"]
-          service = "${local.resource_name_prefix_global}-lb-marketing-enrichment-get-data"
-        },
-        {
-          paths   = ["/enrichment-put-data/*"]
-          service = "${local.resource_name_prefix_global}-lb-marketing-enrichment-put-data"
-        }
-      ]
+    }]
+    path_matchers = {
+      api-paths = {
+        default_service = "frontend-get-consumer"
+        path_rules = [
+          { paths = ["/v2/consumers/update"], service = "frontend-update-consumer" },
+          { paths = ["/v2/consumers"], service = "frontend-get-consumer" },
+          { paths = ["/message-event-processor/*"], service = "message-event-processor" },
+          { paths = ["/enrichment-get-data/*"], service = "enrichment-get-data" },
+          { paths = ["/enrichment-put-data/*"], service = "enrichment-put-data" }
+        ]
+      }
     }
   }
-}
-# [ Internal Application LB - Marketing END ]
 
-# Service Attachment Southbound - Marketing
-module "service_attachment_marketing_primary" {
-  count                 = length(module.lb_marketing_primary)
-  source                = "${local.modules_source_repo}/service_attachment"
-  project_id            = var.project_id
-  region                = local.region["PRIMARY"]
-  name                  = "${local.resource_name_prefix_primary}-att-marketing"
-  connection_preference = "ACCEPT_AUTOMATIC"
-  target_service        = module.lb_marketing_primary[0].forwarding_rule.self_link
-  enable_proxy_protocol = false
-  nat_subnets           = [data.google_compute_subnetwork.psc_subnet_primary[0].id]
+  service_attachment = {
+    nat_subnets          = [data.google_compute_subnetwork.psc_subnet_primary[0].id]
+    automatic_connection = true
+    enable_proxy_protocol = false
+  }
 }
+
 # [PRIMARY END]
 
 # [SECONDARY START]
@@ -1366,179 +1313,62 @@ module "vkey_main_secondary" {
   deletion_protection_enabled   = var.vkey_main_secondary.deletion_protection_enabled
 }
 # [ Internal Application LB - Marketing START ]
-data "google_cloud_run_v2_service" "frontend_update_consumer_secondary" {
-  count    = local.deploy_secondary && var.create_lb_marketing_secondary ? 1 : 0
-  project  = var.project_id
-  location = local.region["SECONDARY"]
-  name     = "${local.resource_name_prefix_secondary}-run-frontend-update-consumer"
-}
-
-# Serverless NEG 
-module "serverless_neg_run_frontend_update_consumer_secondary" {
-  count      = local.deploy_secondary && var.create_lb_marketing_secondary ? 1 : 0
-  source     = "${local.modules_source_repo}/region_network_endpoint_group"
-  name       = "${local.resource_name_prefix_secondary}-neg-frontend-update-consumer"
-  project_id = var.project_id
-  region     = local.region["SECONDARY"]
-  cloud_run = {
-    service = data.google_cloud_run_v2_service.frontend_update_consumer_secondary[0].name
-  }
-}
-
-data "google_cloud_run_v2_service" "frontend_get_consumer_secondary" {
-  count    = local.deploy_secondary && var.create_lb_marketing_secondary ? 1 : 0
-  project  = var.project_id
-  location = local.region["SECONDARY"]
-  name     = "${local.resource_name_prefix_secondary}-run-frontend-get-consumer"
-}
-
-# Serverless NEG
-module "serverless_neg_run_frontend_get_consumer_secondary" {
-  count      = local.deploy_secondary && var.create_lb_marketing_secondary ? 1 : 0
-  source     = "${local.modules_source_repo}/region_network_endpoint_group"
-  name       = "${local.resource_name_prefix_secondary}-neg-frontend-get-consumer"
-  project_id = var.project_id
-  region     = local.region["SECONDARY"]
-  cloud_run = {
-    service = data.google_cloud_run_v2_service.frontend_get_consumer_secondary[0].name
-  }
-}
-
-data "google_cloud_run_v2_service" "message_event_processor_secondary" {
-  count    = local.deploy_secondary && var.create_lb_marketing_secondary ? 1 : 0
-  project  = var.project_id
-  location = local.region["SECONDARY"]
-  name     = "${local.resource_name_prefix_secondary}-run-message-event-processor"
-}
-
-# Serverless NEG
-module "serverless_neg_run_message_event_processor_secondary" {
-  count      = local.deploy_secondary && var.create_lb_marketing_secondary ? 1 : 0
-  source     = "${local.modules_source_repo}/region_network_endpoint_group"
-  name       = "${local.resource_name_prefix_secondary}-neg-message-event-processor"
-  project_id = var.project_id
-  region     = local.region["SECONDARY"]
-  cloud_run = {
-    service = data.google_cloud_run_v2_service.message_event_processor_secondary[0].name
-  }
-}
-
-data "google_cloud_run_v2_service" "enrichment_get_data_secondary" {
-  count    = local.deploy_secondary && var.create_lb_marketing_secondary ? 1 : 0
-  project  = var.project_id
-  location = local.region["SECONDARY"]
-  name     = "${local.resource_name_prefix_secondary}-run-enrichment-get-data"
-}
-
-# Serverless NEG
-module "serverless_neg_run_enrichment_get_data_secondary" {
-  count      = local.deploy_secondary && var.create_lb_marketing_secondary ? 1 : 0
-  source     = "${local.modules_source_repo}/region_network_endpoint_group"
-  name       = "${local.resource_name_prefix_secondary}-neg-enrichment-get-data"
-  project_id = var.project_id
-  region     = local.region["SECONDARY"]
-  cloud_run = {
-    service = data.google_cloud_run_v2_service.enrichment_get_data_secondary[0].name
-  }
-}
-
-data "google_cloud_run_v2_service" "enrichment_put_data_secondary" {
-  count    = local.deploy_secondary && var.create_lb_marketing_secondary ? 1 : 0
-  project  = var.project_id
-  location = local.region["SECONDARY"]
-  name     = "${local.resource_name_prefix_secondary}-run-enrichment-put-data"
-}
-
-# Serverless NEG
-module "serverless_neg_run_enrichment_put_data_secondary" {
-  count      = local.deploy_secondary && var.create_lb_marketing_secondary ? 1 : 0
-  source     = "${local.modules_source_repo}/region_network_endpoint_group"
-  name       = "${local.resource_name_prefix_secondary}-neg-enrichment-put-data"
-  project_id = var.project_id
-  region     = local.region["SECONDARY"]
-  cloud_run = {
-    service = data.google_cloud_run_v2_service.enrichment_put_data_secondary[0].name
-  }
-}
-
-# Internal Application LB
+# Internal Application LB - Marketing (secondary)
 module "lb_marketing_secondary" {
-  count                = local.deploy_secondary && var.create_lb_marketing_secondary ? 1 : 0
-  source               = local.internal_application_load_balancer_module_source
-  project_id           = var.project_id
-  region               = local.region["SECONDARY"]
-  lb_name              = "${local.resource_name_prefix_secondary}-lb-marketing"
-  subnetwork_self_link = data.google_compute_subnetwork.ilb_subnet_secondary[0].self_link
-  ip_address           = module.ip_marketing_ilb_secondary[0].id
-  protocol             = "HTTP"
-  ip_protocol          = "TCP"
-  port_range           = "80"
-  default_backend_key  = "frontend-update-consumer"
+  count      = local.deploy_secondary && var.create_lb_marketing_secondary ? 1 : 0
+  source     = local.internal_application_load_balancer_module_source
+  project_id = var.project_id
+  region     = local.region["SECONDARY"]
+  name       = "${local.resource_name_prefix_secondary}-lb-marketing"
+  address    = module.ip_marketing_ilb_secondary[0].internal_addresses["${local.resource_name_prefix_secondary}-ip-marketing"].address
+  protocol   = "HTTP"
+  ports      = ["80"]
 
-  backends = {
-    frontend-update-consumer = {
-      group = module.serverless_neg_run_frontend_update_consumer_secondary[0].id
-    },
-    frontend-get-consumer = {
-      group = module.serverless_neg_run_frontend_get_consumer_secondary[0].id
-    },
-    message-event-processor = {
-      group = module.serverless_neg_run_message_event_processor_secondary[0].id
-    },
-    enrichment-get-data = {
-      group = module.serverless_neg_run_enrichment_get_data_secondary[0].id
-    },
-    enrichment-put-data = {
-      group = module.serverless_neg_run_enrichment_put_data_secondary[0].id
+  backend_service_configs = {
+    frontend-update-consumer = { health_checks = [], backends = [{ group = "frontend-update-consumer" }] }
+    frontend-get-consumer    = { health_checks = [], backends = [{ group = "frontend-get-consumer" }] }
+    message-event-processor  = { health_checks = [], backends = [{ group = "message-event-processor" }] }
+    enrichment-get-data      = { health_checks = [], backends = [{ group = "enrichment-get-data" }] }
+    enrichment-put-data      = { health_checks = [], backends = [{ group = "enrichment-put-data" }] }
+  }
+
+  health_check_configs = {}
+
+  neg_configs = {
+    frontend-update-consumer = { cloudrun = { region = local.region["SECONDARY"], target_service = { name = format("%s-run-frontend-update-consumer", local.resource_name_prefix_secondary) } } }
+    frontend-get-consumer    = { cloudrun = { region = local.region["SECONDARY"], target_service = { name = format("%s-run-frontend-get-consumer", local.resource_name_prefix_secondary) } } }
+    message-event-processor  = { cloudrun = { region = local.region["SECONDARY"], target_service = { name = format("%s-run-message-event-processor", local.resource_name_prefix_secondary) } } }
+    enrichment-get-data      = { cloudrun = { region = local.region["SECONDARY"], target_service = { name = format("%s-run-enrichment-get-data", local.resource_name_prefix_secondary) } } }
+    enrichment-put-data      = { cloudrun = { region = local.region["SECONDARY"], target_service = { name = format("%s-run-enrichment-put-data", local.resource_name_prefix_secondary) } } }
+  }
+
+  vpc_config = {
+    network    = data.google_compute_network.network.self_link
+    subnetwork = data.google_compute_subnetwork.ilb_subnet_secondary[0].self_link
+  }
+
+  urlmap_config = {
+    default_service = "frontend-get-consumer"
+    host_rules = [{ hosts = ["*"], path_matcher = "api-paths" }]
+    path_matchers = {
+      api-paths = {
+        default_service = "frontend-get-consumer"
+        path_rules = [
+          { paths = ["/update-consumer/*"], service = "frontend-update-consumer" },
+          { paths = ["/get-consumer/*"], service = "frontend-get-consumer" },
+          { paths = ["/message-event-processor/*"], service = "message-event-processor" },
+          { paths = ["/enrichment-get-data/*"], service = "enrichment-get-data" },
+          { paths = ["/enrichment-put-data/*"], service = "enrichment-put-data" }
+        ]
+      }
     }
   }
-  host_rules = [
-    {
-      hosts        = ["*"]
-      path_matcher = "api-paths"
-    }
-  ]
-  path_matchers = {
-    "api-paths" = {
-      default_service = "${local.resource_name_prefix_global}-lb-marketing-frontend-get-consumer"
-      rules = [
-        {
-          paths   = ["/update-consumer/*"]
-          service = "${local.resource_name_prefix_global}-lb-marketing-frontend-update-consumer"
-        },
-        {
-          paths   = ["/get-consumer/*"]
-          service = "${local.resource_name_prefix_global}-lb-marketing-frontend-get-consumer"
-        },
-        {
-          paths   = ["/message-event-processor/*"]
-          service = "${local.resource_name_prefix_global}-lb-marketing-message-event-processor"
-        },
-        {
-          paths   = ["/enrichment-get-data/*"]
-          service = "${local.resource_name_prefix_global}-lb-marketing-enrichment-get-data"
-        },
-        {
-          paths   = ["/enrichment-put-data/*"]
-          service = "${local.resource_name_prefix_global}-lb-marketing-enrichment-put-data"
-        }
-      ]
-    }
-  }
-}
-# [ Internal Application LB - Marketing END ]
 
-# Service Attachment Southbound - Marketing
-module "service_attachment_marketing_secondary" {
-  count                 = length(module.lb_marketing_secondary)
-  source                = "${local.modules_source_repo}/service_attachment"
-  project_id            = var.project_id
-  region                = local.region["SECONDARY"]
-  name                  = "${local.resource_name_prefix_secondary}-att-marketing"
-  connection_preference = "ACCEPT_AUTOMATIC"
-  target_service        = module.lb_marketing_secondary[0].forwarding_rule.self_link
-  enable_proxy_protocol = false
-  nat_subnets           = [data.google_compute_subnetwork.psc_subnet_secondary[0].id]
+  service_attachment = {
+    nat_subnets           = [data.google_compute_subnetwork.psc_subnet_secondary[0].id]
+    automatic_connection  = true
+    enable_proxy_protocol = false
+  }
 }
 
 # [SECONDARY END]
