@@ -37,7 +37,7 @@ locals {
   spanner_instance_module_source                          = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/spanner-instance?ref=${var.cloud_foundation_fabric_version}"
   spanner_backup_module_source                            = "git::https://github.com/GoogleCloudPlatform/terraform-google-cloud-spanner.git//modules/schedule_spanner_backup?ref=${var.cloud_spanner_module_version}"
   cloud_armor_module_source                               = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-cloud-armor?ref=${var.cloud_foundation_fabric_version}"
-  memorystore_valkey_module_source                        = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/memorystore?ref=${var.cloud_foundation_fabric_version}"
+  memorystore_valkey_module_source                        = "git::https://github.com/terraform-google-modules/terraform-google-memorystore.git//modules/valkey?ref=${var.memorystore_module_version}"
 
 
   secret_manager_entries = {
