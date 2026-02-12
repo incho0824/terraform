@@ -26,8 +26,6 @@ locals {
   resource_name_prefix_secondary = format("%s-%s%s", var.environment, var.app_code, local.regional_prefixes[1])
   resource_name_prefix_global    = format("%s-%s", var.environment, var.app_code)
   modules_source_repo            = "git::https://github.com/The-Coca-Cola-Company/consumer-terraform-modules.git//opentofu/modules"
-  secret_manager_module_source   = "${local.modules_source_repo}/secret_manager"
-  secret_manager_module_version  = "v1.0.0"
 
   # Global External Application LB - Marketing API Edge 
   marketing_api_edge_serverless_backend_services = {
@@ -577,7 +575,7 @@ data "google_compute_subnetwork" "psc_subnet_secondary" {
 }
 
 module "sm_vkey_creds" {
-  source              = "${local.secret_manager_module_source}?ref=${local.secret_manager_module_version}"
+  source              = "${local.modules_source_repo}/secret_manager"
   project_id          = var.project_id
   name                = "${local.resource_name_prefix_global}-sm-vkey-creds"
   secret_data         = var.sm_vkey_creds_secret_data
@@ -585,7 +583,7 @@ module "sm_vkey_creds" {
 }
 
 module "sm_fraud_configs" {
-  source              = "${local.secret_manager_module_source}?ref=${local.secret_manager_module_version}"
+  source              = "${local.modules_source_repo}/secret_manager"
   project_id          = var.project_id
   name                = "${local.resource_name_prefix_global}-sm-fraud-configs"
   secret_data         = var.sm_fraud_configs_secret_data
@@ -593,7 +591,7 @@ module "sm_fraud_configs" {
 }
 
 module "sm_gateway_creds" {
-  source              = "${local.secret_manager_module_source}?ref=${local.secret_manager_module_version}"
+  source              = "${local.modules_source_repo}/secret_manager"
   project_id          = var.project_id
   name                = "${local.resource_name_prefix_global}-sm-gateway-creds"
   secret_data         = var.sm_gateway_creds_secret_data
@@ -601,7 +599,7 @@ module "sm_gateway_creds" {
 }
 
 module "sm_meta_access_token" {
-  source              = "${local.secret_manager_module_source}?ref=${local.secret_manager_module_version}"
+  source              = "${local.modules_source_repo}/secret_manager"
   project_id          = var.project_id
   name                = "${local.resource_name_prefix_global}-sm-meta-access-token"
   secret_data         = var.sm_meta_access_token_secret_data
@@ -609,7 +607,7 @@ module "sm_meta_access_token" {
 }
 
 module "sm_meta_verify_token" {
-  source              = "${local.secret_manager_module_source}?ref=${local.secret_manager_module_version}"
+  source              = "${local.modules_source_repo}/secret_manager"
   project_id          = var.project_id
   name                = "${local.resource_name_prefix_global}-sm-meta-verify-token"
   secret_data         = var.sm_meta_verify_token_secret_data
@@ -617,7 +615,7 @@ module "sm_meta_verify_token" {
 }
 
 module "sm_recaptcha_config" {
-  source              = "${local.secret_manager_module_source}?ref=${local.secret_manager_module_version}"
+  source              = "${local.modules_source_repo}/secret_manager"
   project_id          = var.project_id
   name                = "${local.resource_name_prefix_global}-sm-recaptcha-config"
   secret_data         = var.sm_recaptcha_config_secret_data
@@ -625,7 +623,7 @@ module "sm_recaptcha_config" {
 }
 
 module "sm_prospect_ingestion_oauth_parameter" {
-  source              = "${local.secret_manager_module_source}?ref=${local.secret_manager_module_version}"
+  source              = "${local.modules_source_repo}/secret_manager"
   project_id          = var.project_id
   name                = "${local.resource_name_prefix_global}-sm-prospect-ingestion-oauth-parameter"
   secret_data         = var.sm_prospect_ingestion_oauth_parameter_secret_data
