@@ -29,6 +29,7 @@ locals {
   gcs_bucket_module_source       = "git::https://github.com/terraform-google-modules/terraform-google-cloud-storage.git//modules/simple_bucket?ref=v11.0.0"
   secret_manager_module_source   = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/secret-manager?ref=v52.0.0"
   firestore_module_source        = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/firestore?ref=v52.0.0"
+  certificate_manager_module_source = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/certificate-manager?ref=v52.0.0"
 
   # Global External Application LB - Marketing API Edge 
   marketing_api_edge_serverless_backend_services = {
@@ -899,32 +900,30 @@ module "ca_marketing_api_security" {
   cloud_armor_name = "${local.resource_name_prefix_global}-ca-marketing-api-security"
 }
 
-module "dns_authorization_wildcard_mgmt" {
-  source                   = "${local.modules_source_repo}/certificate_manager_dns_authorization"
-  project_id               = var.mgmt_project_id
-  dns_authorization_name   = "${local.resource_name_prefix_global}-da-wildcard"
-  dns_authorization_domain = var.wildcard_domain
-  type                     = "PER_PROJECT_RECORD"
-}
-
-module "managed_cert_wildcard_mgmt" {
-  source             = "${local.modules_source_repo}/certificate_manager_managed_certificate"
-  project_id         = var.mgmt_project_id
-  certificate_name   = "${local.resource_name_prefix_global}-gmc-wildcard"
-  domain             = "*.${var.wildcard_domain}"
-  dns_authorizations = [module.dns_authorization_wildcard_mgmt.dns_authorization_id]
-}
-
-# Certificate Map
-module "certificate_map_marketing_api_edge" {
-  source               = "${local.modules_source_repo}/certificate_map"
-  project_id           = var.mgmt_project_id
-  certificate_map_name = "${local.resource_name_prefix_global}-cm-marketing-api-edge"
-  certificate_map_entries = {
-    "cme-wildcard" = {
-      entry_name     = "${local.resource_name_prefix_global}-cme-wildcard"
-      certificate_id = module.managed_cert_wildcard_mgmt.certificate_id
-      hostname       = "*.${var.wildcard_domain}"
+module "certificate_manager_marketing_api_edge" {
+  source     = local.certificate_manager_module_source
+  project_id = var.mgmt_project_id
+  dns_authorizations = {
+    "${local.resource_name_prefix_global}-da-wildcard" = {
+      domain = var.wildcard_domain
+      type   = "PER_PROJECT_RECORD"
+    }
+  }
+  certificates = {
+    "${local.resource_name_prefix_global}-gmc-wildcard" = {
+      managed = {
+        domains            = ["*.${var.wildcard_domain}"]
+        dns_authorizations = ["${local.resource_name_prefix_global}-da-wildcard"]
+      }
+    }
+  }
+  map = {
+    name = "${local.resource_name_prefix_global}-cm-marketing-api-edge"
+    entries = {
+      "cme-wildcard" = {
+        certificates = ["${local.resource_name_prefix_global}-gmc-wildcard"]
+        hostname     = "*.${var.wildcard_domain}"
+      }
     }
   }
 }
@@ -938,7 +937,7 @@ module "lb_marketing_api_edge" {
   load_balancing_scheme = "EXTERNAL_MANAGED"
   https_redirect        = true
   ssl                   = true
-  certificate_map       = "//certificatemanager.googleapis.com/${module.certificate_map_marketing_api_edge.certificate_map_id}"
+  certificate_map       = "//certificatemanager.googleapis.com/${module.certificate_manager_marketing_api_edge.map_id}"
   ip_address            = module.ip_marketing_api_edge.id
   default_service_key   = local.marketing_api_edge_path_matchers["api-paths"].default_service
 
@@ -1012,54 +1011,44 @@ module "ca_aad_b2c_api_security" {
   cloud_armor_name = "${local.resource_name_prefix_global}-ca-aad-b2c-api-security"
 }
 
-# Google Managed Certificate with DNS Authorization
-module "dns_authorization_wildcard_pdt" {
-  source                   = "${local.modules_source_repo}/certificate_manager_dns_authorization"
-  project_id               = var.project_id
-  dns_authorization_name   = "${local.resource_name_prefix_global}-da-wildcard"
-  dns_authorization_domain = var.wildcard_domain
-  type                     = "PER_PROJECT_RECORD"
-}
-
-module "managed_cert_wildcard_pdt" {
-  source             = "${local.modules_source_repo}/certificate_manager_managed_certificate"
-  project_id         = var.project_id
-  certificate_name   = "${local.resource_name_prefix_global}-gmc-wildcard"
-  domain             = "*.${var.wildcard_domain}"
-  dns_authorizations = [module.dns_authorization_wildcard_pdt.dns_authorization_id]
-}
-
-module "dns_authorization_prospect_pdt" {
-  source                   = "${local.modules_source_repo}/certificate_manager_dns_authorization"
-  project_id               = var.project_id
-  dns_authorization_name   = "${local.resource_name_prefix_global}-da-prospect"
-  dns_authorization_domain = var.prospect_domain
-  type                     = "FIXED_RECORD"
-}
-
-module "managed_cert_prospect_pdt" {
-  source             = "${local.modules_source_repo}/certificate_manager_managed_certificate"
-  project_id         = var.project_id
-  certificate_name   = "${local.resource_name_prefix_global}-gmc-prospect"
-  domain             = "*.${var.prospect_domain}"
-  dns_authorizations = [module.dns_authorization_prospect_pdt.dns_authorization_id]
-}
-
-# Certificate Map
-module "certificate_map_dedicated_api_edge" {
-  source               = "${local.modules_source_repo}/certificate_map"
-  project_id           = var.project_id
-  certificate_map_name = "${local.resource_name_prefix_global}-cm-dedicated-api-edge"
-  certificate_map_entries = {
-    "cme-wildcard" = {
-      entry_name     = "${local.resource_name_prefix_global}-cme-wildcard"
-      certificate_id = module.managed_cert_wildcard_pdt.certificate_id
-      hostname       = "*.${var.wildcard_domain}"
+module "certificate_manager_dedicated_api_edge" {
+  source     = local.certificate_manager_module_source
+  project_id = var.project_id
+  dns_authorizations = {
+    "${local.resource_name_prefix_global}-da-wildcard" = {
+      domain = var.wildcard_domain
+      type   = "PER_PROJECT_RECORD"
     }
-    "cme-prospect" = {
-      entry_name     = "${local.resource_name_prefix_global}-cme-prospect"
-      certificate_id = module.managed_cert_prospect_pdt.certificate_id
-      hostname       = "*.${var.prospect_domain}"
+    "${local.resource_name_prefix_global}-da-prospect" = {
+      domain = var.prospect_domain
+      type   = "FIXED_RECORD"
+    }
+  }
+  certificates = {
+    "${local.resource_name_prefix_global}-gmc-wildcard" = {
+      managed = {
+        domains            = ["*.${var.wildcard_domain}"]
+        dns_authorizations = ["${local.resource_name_prefix_global}-da-wildcard"]
+      }
+    }
+    "${local.resource_name_prefix_global}-gmc-prospect" = {
+      managed = {
+        domains            = ["*.${var.prospect_domain}"]
+        dns_authorizations = ["${local.resource_name_prefix_global}-da-prospect"]
+      }
+    }
+  }
+  map = {
+    name = "${local.resource_name_prefix_global}-cm-dedicated-api-edge"
+    entries = {
+      "cme-wildcard" = {
+        certificates = ["${local.resource_name_prefix_global}-gmc-wildcard"]
+        hostname     = "*.${var.wildcard_domain}"
+      }
+      "cme-prospect" = {
+        certificates = ["${local.resource_name_prefix_global}-gmc-prospect"]
+        hostname     = "*.${var.prospect_domain}"
+      }
     }
   }
 }
@@ -1073,7 +1062,7 @@ module "lb_dedicated_api_edge" {
   load_balancing_scheme = "EXTERNAL_MANAGED"
   https_redirect        = true
   ssl                   = true
-  certificate_map       = "//certificatemanager.googleapis.com/${module.certificate_map_dedicated_api_edge.certificate_map_id}"
+  certificate_map       = "//certificatemanager.googleapis.com/${module.certificate_manager_dedicated_api_edge.map_id}"
   ip_address            = module.ip_dedicated_api_edge.id
   default_service_key   = local.dedicated_api_edge_path_matchers["api-paths"].default_service
 
