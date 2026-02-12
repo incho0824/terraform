@@ -26,6 +26,8 @@ locals {
   resource_name_prefix_secondary = format("%s-%s%s", var.environment, var.app_code, local.regional_prefixes[1])
   resource_name_prefix_global    = format("%s-%s", var.environment, var.app_code)
   modules_source_repo            = "git::https://github.com/The-Coca-Cola-Company/consumer-terraform-modules.git//opentofu/modules"
+  gcs_bucket_module_source       = "git::https://github.com/terraform-google-modules/terraform-google-cloud-storage.git//modules/simple_bucket?ref=v11.0.0"
+  secret_manager_module_source   = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/secret-manager?ref=v52.0.0"
 
   # Global External Application LB - Marketing API Edge 
   marketing_api_edge_serverless_backend_services = {
@@ -575,191 +577,240 @@ data "google_compute_subnetwork" "psc_subnet_secondary" {
 }
 
 module "sm_vkey_creds" {
-  source              = "${local.modules_source_repo}/secret_manager"
-  project_id          = var.project_id
-  name                = "${local.resource_name_prefix_global}-sm-vkey-creds"
-  secret_data         = var.sm_vkey_creds_secret_data
-  deletion_protection = false
+  source     = local.secret_manager_module_source
+  project_id = var.project_id
+  secrets = {
+    "${local.resource_name_prefix_global}-sm-vkey-creds" = {
+      deletion_protection = false
+      versions = {
+        default = {
+          data = var.sm_vkey_creds_secret_data
+        }
+      }
+    }
+  }
 }
 
 module "sm_fraud_configs" {
-  source              = "${local.modules_source_repo}/secret_manager"
-  project_id          = var.project_id
-  name                = "${local.resource_name_prefix_global}-sm-fraud-configs"
-  secret_data         = var.sm_fraud_configs_secret_data
-  deletion_protection = false
+  source     = local.secret_manager_module_source
+  project_id = var.project_id
+  secrets = {
+    "${local.resource_name_prefix_global}-sm-fraud-configs" = {
+      deletion_protection = false
+      versions = {
+        default = {
+          data = var.sm_fraud_configs_secret_data
+        }
+      }
+    }
+  }
 }
 
 module "sm_gateway_creds" {
-  source              = "${local.modules_source_repo}/secret_manager"
-  project_id          = var.project_id
-  name                = "${local.resource_name_prefix_global}-sm-gateway-creds"
-  secret_data         = var.sm_gateway_creds_secret_data
-  deletion_protection = false
+  source     = local.secret_manager_module_source
+  project_id = var.project_id
+  secrets = {
+    "${local.resource_name_prefix_global}-sm-gateway-creds" = {
+      deletion_protection = false
+      versions = {
+        default = {
+          data = var.sm_gateway_creds_secret_data
+        }
+      }
+    }
+  }
 }
 
 module "sm_meta_access_token" {
-  source              = "${local.modules_source_repo}/secret_manager"
-  project_id          = var.project_id
-  name                = "${local.resource_name_prefix_global}-sm-meta-access-token"
-  secret_data         = var.sm_meta_access_token_secret_data
-  deletion_protection = false
+  source     = local.secret_manager_module_source
+  project_id = var.project_id
+  secrets = {
+    "${local.resource_name_prefix_global}-sm-meta-access-token" = {
+      deletion_protection = false
+      versions = {
+        default = {
+          data = var.sm_meta_access_token_secret_data
+        }
+      }
+    }
+  }
 }
 
 module "sm_meta_verify_token" {
-  source              = "${local.modules_source_repo}/secret_manager"
-  project_id          = var.project_id
-  name                = "${local.resource_name_prefix_global}-sm-meta-verify-token"
-  secret_data         = var.sm_meta_verify_token_secret_data
-  deletion_protection = false
+  source     = local.secret_manager_module_source
+  project_id = var.project_id
+  secrets = {
+    "${local.resource_name_prefix_global}-sm-meta-verify-token" = {
+      deletion_protection = false
+      versions = {
+        default = {
+          data = var.sm_meta_verify_token_secret_data
+        }
+      }
+    }
+  }
 }
 
 module "sm_recaptcha_config" {
-  source              = "${local.modules_source_repo}/secret_manager"
-  project_id          = var.project_id
-  name                = "${local.resource_name_prefix_global}-sm-recaptcha-config"
-  secret_data         = var.sm_recaptcha_config_secret_data
-  deletion_protection = false
+  source     = local.secret_manager_module_source
+  project_id = var.project_id
+  secrets = {
+    "${local.resource_name_prefix_global}-sm-recaptcha-config" = {
+      deletion_protection = false
+      versions = {
+        default = {
+          data = var.sm_recaptcha_config_secret_data
+        }
+      }
+    }
+  }
 }
 
 module "sm_prospect_ingestion_oauth_parameter" {
-  source              = "${local.modules_source_repo}/secret_manager"
-  project_id          = var.project_id
-  name                = "${local.resource_name_prefix_global}-sm-prospect-ingestion-oauth-parameter"
-  secret_data         = var.sm_prospect_ingestion_oauth_parameter_secret_data
-  deletion_protection = false
+  source     = local.secret_manager_module_source
+  project_id = var.project_id
+  secrets = {
+    "${local.resource_name_prefix_global}-sm-prospect-ingestion-oauth-parameter" = {
+      deletion_protection = false
+      versions = {
+        default = {
+          data = var.sm_prospect_ingestion_oauth_parameter_secret_data
+        }
+      }
+    }
+  }
 }
 
 # GCS Bucket Exp Configs - AADB2C, Frontend,Enrichment, Internal
 module "gcs_exp_configs" {
-  source                      = "${local.modules_source_repo}/storage_bucket"
+  source                      = local.gcs_bucket_module_source
   project_id                  = var.project_id
   name                        = "${local.resource_name_prefix_global}-gcs-exp-configs"
   location                    = var.gcs_exp_configs.location
   public_access_prevention    = var.gcs_exp_configs.public_access_prevention
-  uniform_bucket_level_access = var.gcs_exp_configs.uniform_bucket_level_access
+  bucket_policy_only          = var.gcs_exp_configs.uniform_bucket_level_access
   force_destroy               = var.gcs_exp_configs.force_destroy
 }
 
 # GCS Bucket Exp Configs - Message
 module "gcs_exp_templates" {
-  source                      = "${local.modules_source_repo}/storage_bucket"
+  source                      = local.gcs_bucket_module_source
   project_id                  = var.project_id
   name                        = "${local.resource_name_prefix_global}-gcs-exp-templates"
   location                    = var.gcs_exp_templates.location
   public_access_prevention    = var.gcs_exp_templates.public_access_prevention
-  uniform_bucket_level_access = var.gcs_exp_templates.uniform_bucket_level_access
+  bucket_policy_only          = var.gcs_exp_templates.uniform_bucket_level_access
   force_destroy               = var.gcs_exp_templates.force_destroy
 }
 
 # GCS Bucket Prospect Configs - Prospect
 module "gcs_prospect_configs" {
-  source                      = "${local.modules_source_repo}/storage_bucket"
+  source                      = local.gcs_bucket_module_source
   project_id                  = var.project_id
   name                        = "${local.resource_name_prefix_global}-gcs-prospect-configs"
   location                    = var.gcs_prospect_configs.location
   public_access_prevention    = var.gcs_prospect_configs.public_access_prevention
-  uniform_bucket_level_access = var.gcs_prospect_configs.uniform_bucket_level_access
+  bucket_policy_only          = var.gcs_prospect_configs.uniform_bucket_level_access
   force_destroy               = var.gcs_prospect_configs.force_destroy
 }
 
 # GCS Bucket Prospect Dropzone - Prospect
 module "gcs_prospect_dropzone" {
-  source                      = "${local.modules_source_repo}/storage_bucket"
+  source                      = local.gcs_bucket_module_source
   project_id                  = var.project_id
   name                        = "${local.resource_name_prefix_global}-gcs-prospect-dropzone"
   location                    = var.gcs_prospect_dropzone.location
   public_access_prevention    = var.gcs_prospect_dropzone.public_access_prevention
-  uniform_bucket_level_access = var.gcs_prospect_dropzone.uniform_bucket_level_access
+  bucket_policy_only          = var.gcs_prospect_dropzone.uniform_bucket_level_access
   force_destroy               = var.gcs_prospect_dropzone.force_destroy
 }
 
 # GCS Bucket Privacy Configs - Privacy
 module "gcs_privacy_configs" {
-  source                      = "${local.modules_source_repo}/storage_bucket"
+  source                      = local.gcs_bucket_module_source
   project_id                  = var.project_id
   name                        = "${local.resource_name_prefix_global}-gcs-privacy-configs"
   location                    = var.gcs_privacy_configs.location
   public_access_prevention    = var.gcs_privacy_configs.public_access_prevention
-  uniform_bucket_level_access = var.gcs_privacy_configs.uniform_bucket_level_access
+  bucket_policy_only          = var.gcs_privacy_configs.uniform_bucket_level_access
   force_destroy               = var.gcs_privacy_configs.force_destroy
 }
 
 # GCS Bucket Privacy Configs - Privacy
 module "gcs_privacy_consumer_archive" {
-  source                      = "${local.modules_source_repo}/storage_bucket"
+  source                      = local.gcs_bucket_module_source
   project_id                  = var.project_id
   name                        = "${local.resource_name_prefix_global}-gcs-privacy-consumer-archive"
   location                    = var.gcs_privacy_consumer_archive.location
   public_access_prevention    = var.gcs_privacy_consumer_archive.public_access_prevention
-  uniform_bucket_level_access = var.gcs_privacy_consumer_archive.uniform_bucket_level_access
+  bucket_policy_only          = var.gcs_privacy_consumer_archive.uniform_bucket_level_access
   force_destroy               = var.gcs_privacy_consumer_archive.force_destroy
 }
 
 # GCS Bucket AADB2C Event Dropzone - AADB2C Reporting
 module "gcs_aad_b2c_event_dropzone" {
-  source                      = "${local.modules_source_repo}/storage_bucket"
+  source                      = local.gcs_bucket_module_source
   project_id                  = var.project_id
   name                        = "${local.resource_name_prefix_global}-gcs-aad-b2c-event-dropzone"
   location                    = var.gcs_aadb2c_event_dropzone.location
   public_access_prevention    = var.gcs_aadb2c_event_dropzone.public_access_prevention
-  uniform_bucket_level_access = var.gcs_aadb2c_event_dropzone.uniform_bucket_level_access
+  bucket_policy_only          = var.gcs_aadb2c_event_dropzone.uniform_bucket_level_access
   force_destroy               = var.gcs_aadb2c_event_dropzone.force_destroy
 }
 
 # Temporary START
 # GCS Bucket cds-gcs-aad-b2c-components-cdn
 module "gcs_aad_b2c_component_cdn" {
-  source                      = "${local.modules_source_repo}/storage_bucket"
+  source                      = local.gcs_bucket_module_source
   project_id                  = var.project_id
   name                        = "${local.resource_name_prefix_global}-gcs-aad-b2c-component-cdn"
   location                    = var.gcs_aad_b2c_component_cdn.location
   public_access_prevention    = var.gcs_aad_b2c_component_cdn.public_access_prevention
-  uniform_bucket_level_access = var.gcs_aad_b2c_component_cdn.uniform_bucket_level_access
+  bucket_policy_only          = var.gcs_aad_b2c_component_cdn.uniform_bucket_level_access
   force_destroy               = var.gcs_aad_b2c_component_cdn.force_destroy
 }
  
 # GCS Bucket cds-gcs-aad-b2c-components-demo
 module "gcs_aad_b2c_component_demo" {
-  source                      = "${local.modules_source_repo}/storage_bucket"
+  source                      = local.gcs_bucket_module_source
   project_id                  = var.project_id
   name                        = "${local.resource_name_prefix_global}-gcs-aad-b2c-component-demo"
   location                    = var.gcs_aad_b2c_component_demo.location
   public_access_prevention    = var.gcs_aad_b2c_component_demo.public_access_prevention
-  uniform_bucket_level_access = var.gcs_aad_b2c_component_demo.uniform_bucket_level_access
+  bucket_policy_only          = var.gcs_aad_b2c_component_demo.uniform_bucket_level_access
   force_destroy               = var.gcs_aad_b2c_component_demo.force_destroy
 }
  
 # GCS Bucket cds-gcs-aad-b2c-components-account
 module "gcs_aad_b2c_component_account" {
-  source                      = "${local.modules_source_repo}/storage_bucket"
+  source                      = local.gcs_bucket_module_source
   project_id                  = var.project_id
   name                        = "${local.resource_name_prefix_global}-gcs-aad-b2c-component-account"
   location                    = var.gcs_aad_b2c_component_account.location
   public_access_prevention    = var.gcs_aad_b2c_component_account.public_access_prevention
-  uniform_bucket_level_access = var.gcs_aad_b2c_component_account.uniform_bucket_level_access
+  bucket_policy_only          = var.gcs_aad_b2c_component_account.uniform_bucket_level_access
   force_destroy               = var.gcs_aad_b2c_component_account.force_destroy
 }
  
 # GCS Bucket gcs-consumer-gamv2-demo-site
 module "gcs_consumer_gamv2_demo_site" {
-  source                      = "${local.modules_source_repo}/storage_bucket"
+  source                      = local.gcs_bucket_module_source
   project_id                  = var.project_id
   name                        = "${local.resource_name_prefix_global}-gcs-consumer-gamv2-demo-site"
   location                    = var.gcs_consumer_gamv2_demo_site.location
   public_access_prevention    = var.gcs_consumer_gamv2_demo_site.public_access_prevention
-  uniform_bucket_level_access = var.gcs_consumer_gamv2_demo_site.uniform_bucket_level_access
+  bucket_policy_only          = var.gcs_consumer_gamv2_demo_site.uniform_bucket_level_access
   force_destroy               = var.gcs_consumer_gamv2_demo_site.force_destroy
 }
  
 # GCS Bucket gcs-processor-configs - Dataprocessor services
 module "gcs_processor_configs" {
-  source                      = "${local.modules_source_repo}/storage_bucket"
+  source                      = local.gcs_bucket_module_source
   project_id                  = var.project_id
   name                        = "${local.resource_name_prefix_global}-gcs-processor-configs"
   location                    = var.gcs_processor_configs.location
   public_access_prevention    = var.gcs_processor_configs.public_access_prevention
-  uniform_bucket_level_access = var.gcs_processor_configs.uniform_bucket_level_access
+  bucket_policy_only          = var.gcs_processor_configs.uniform_bucket_level_access
   force_destroy               = var.gcs_processor_configs.force_destroy
 }
 # Temporary END
