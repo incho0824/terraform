@@ -28,6 +28,8 @@ locals {
   resource_name_prefix_secondary = format("%s-%s%s", var.environment, var.app_code, local.regional_prefixes[1])
   resource_name_prefix_global    = format("%s-%s", var.environment, var.app_code)
   modules_source_repo            = "git::https://github.com/The-Coca-Cola-Company/consumer-terraform-modules.git//opentofu/modules"
+  global_external_application_load_balancer_module_source = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-lb-app-ext?ref=v52.0.0"
+  internal_application_load_balancer_module_source        = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-lb-app-int?ref=v52.0.0"
   gcs_bucket_module_source       = "git::https://github.com/terraform-google-modules/terraform-google-cloud-storage.git//modules/simple_bucket?ref=v11.0.0"
   secret_manager_module_source   = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/secret-manager?ref=v52.0.0"
   firestore_module_source        = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/firestore?ref=v52.0.0"
@@ -942,7 +944,7 @@ module "certificate_manager_marketing_api_edge" {
 # Global External Application Load Balancer - lb-marketing-api-edge
 module "lb_marketing_api_edge" {
   count                 = var.create_lb_marketing_api_edge ? 1 : 0
-  source                = "${local.modules_source_repo}/global_external_application_load_balancer"
+  source                = local.global_external_application_load_balancer_module_source
   project_id            = var.mgmt_project_id
   lb_name               = "${local.resource_name_prefix_global}-lb-marketing-api-edge"
   load_balancing_scheme = "EXTERNAL_MANAGED"
@@ -1067,7 +1069,7 @@ module "certificate_manager_dedicated_api_edge" {
 # Global External Application Load Balancer - dedicated-api-edge
 module "lb_dedicated_api_edge" {
   count                 = var.create_lb_dedicated_api_edge ? 1 : 0
-  source                = "${local.modules_source_repo}/global_external_application_load_balancer"
+  source                = local.global_external_application_load_balancer_module_source
   project_id            = var.project_id
   lb_name               = "${local.resource_name_prefix_global}-lb-dedicated-api-edge"
   load_balancing_scheme = "EXTERNAL_MANAGED"
@@ -1267,7 +1269,7 @@ module "serverless_neg_run_enrichment_put_data_primary" {
 # Internal Application LB
 module "lb_marketing_primary" {
   count                = local.deploy_primary && var.create_lb_marketing_primary ? 1 : 0
-  source               = "${local.modules_source_repo}/internal_application_load_balancer"
+  source               = local.internal_application_load_balancer_module_source
   project_id           = var.project_id
   region               = local.region["PRIMARY"]
   lb_name              = "${local.resource_name_prefix_primary}-lb-marketing"
@@ -1460,7 +1462,7 @@ module "serverless_neg_run_enrichment_put_data_secondary" {
 # Internal Application LB
 module "lb_marketing_secondary" {
   count                = local.deploy_secondary && var.create_lb_marketing_secondary ? 1 : 0
-  source               = "${local.modules_source_repo}/internal_application_load_balancer"
+  source               = local.internal_application_load_balancer_module_source
   project_id           = var.project_id
   region               = local.region["SECONDARY"]
   lb_name              = "${local.resource_name_prefix_secondary}-lb-marketing"
