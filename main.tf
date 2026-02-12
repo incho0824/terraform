@@ -19,6 +19,8 @@ locals {
   # Whether to create primary/secondary region specific resources. There will be no secondary regions in alpha and beta env
   deploy_primary   = contains(["gamma", "prod"], lower(var.environment)) ? var.deploy_primary : true
   deploy_secondary = contains(["gamma", "prod"], lower(var.environment)) ? var.deploy_secondary : false
+  spanner_instance_name = "${local.resource_name_prefix_global}-spn-main-instance"
+  spanner_database_name = var.spn_main_instance_consumer_db.name
 
   # For gamma and prod, assign regional prefixes. For other environments, keep prefixes empty.
   regional_prefixes              = contains(["gamma", "prod"], lower(var.environment)) ? ["-pri", "-sec"] : ["", ""]
@@ -30,6 +32,8 @@ locals {
   secret_manager_module_source   = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/secret-manager?ref=v52.0.0"
   firestore_module_source        = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/firestore?ref=v52.0.0"
   certificate_manager_module_source = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/certificate-manager?ref=v52.0.0"
+  spanner_instance_module_source = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/spanner-instance?ref=v52.0.0"
+  spanner_backup_module_source   = "git::https://github.com/GoogleCloudPlatform/terraform-google-cloud-spanner.git//modules/schedule_spanner_backup?ref=v1.2.1"
 
   # Global External Application LB - Marketing API Edge 
   marketing_api_edge_serverless_backend_services = {
@@ -835,42 +839,49 @@ module "fs_main_database" {
 }
 
 module "spn_main_instance" {
-  source                       = "${local.modules_source_repo}/cloud_spanner"
-  project_id                   = var.project_id
-  instance_name                = "${local.resource_name_prefix_global}-spn-main-instance"
-  instance_display_name        = "${local.resource_name_prefix_global}-spn"
-  instance_config              = var.spn_main_instance.instance_config
-  edition                      = var.spn_main_instance.edition
-  num_nodes                    = var.spn_main_instance.num_nodes
-  instance_type                = var.spn_main_instance.instance_type
-  enable_autoscaling           = var.spn_main_instance.enable_autoscaling
-  default_backup_schedule_type = var.spn_main_instance.default_backup_schedule_type
-  force_destroy                = var.spn_main_instance.force_destroy
-}
-
-module "spn_main_instance_consumer_db" {
-  source                   = "${local.modules_source_repo}/cloud_spanner_database"
-  project_id               = var.project_id
-  instance                 = module.spn_main_instance.spanner_instance_name
-  name                     = var.spn_main_instance_consumer_db.name
-  version_retention_period = var.spn_main_instance_consumer_db.version_retention_period
-  encryption_config        = var.spn_main_instance_consumer_db.encryption_config
-  database_dialect         = var.spn_main_instance_consumer_db.database_dialect
-  enable_drop_protection   = var.spn_main_instance_consumer_db.enable_drop_protection
-  deletion_protection      = var.spn_main_instance_consumer_db.deletion_protection
-  default_time_zone        = var.spn_main_instance_consumer_db.default_time_zone
+  source     = local.spanner_instance_module_source
+  project_id = var.project_id
+  instance = {
+    name         = local.spanner_instance_name
+    display_name = "${local.resource_name_prefix_global}-spn"
+    config = {
+      name = var.spn_main_instance.instance_config
+    }
+    num_nodes        = var.spn_main_instance.num_nodes
+    processing_units = var.spn_main_instance.processing_units
+    force_destroy    = var.spn_main_instance.force_destroy
+    autoscaling = var.spn_main_instance.enable_autoscaling ? {
+      limits = {
+        min_processing_units = var.spn_main_instance.min_processing_units
+        max_processing_units = var.spn_main_instance.max_processing_units
+      }
+      targets = {
+        high_priority_cpu_utilization_percent = var.spn_main_instance.high_priority_cpu_utilization_percent
+        storage_utilization_percent           = var.spn_main_instance.storage_utilization_percent
+      }
+    } : null
+  }
+  databases = {
+    (local.spanner_database_name) = {
+      version_retention_period = var.spn_main_instance_consumer_db.version_retention_period
+      ddl                      = var.spn_main_instance_consumer_db.ddl
+      database_dialect         = var.spn_main_instance_consumer_db.database_dialect
+      enable_drop_protection   = var.spn_main_instance_consumer_db.enable_drop_protection
+      kms_key_name             = try(var.spn_main_instance_consumer_db.encryption_config.kms_key_name, null)
+    }
+  }
 }
 
 module "spn_main_instance_consumer_db_backup" {
-  source                      = "${local.modules_source_repo}/cloud_spanner_backup"
+  source                      = local.spanner_backup_module_source
   project_id                  = var.project_id
-  instance_name               = module.spn_main_instance.spanner_instance_name
-  database_name               = module.spn_main_instance_consumer_db.database_name
+  instance_name               = local.spanner_instance_name
+  database_name               = local.spanner_database_name
   backup_schedule_name        = "${local.resource_name_prefix_global}-spn-main-instance-bkp-schedule"
   retention_duration          = var.spn_main_instance_consumer_db_backup.retention_duration
   cron_spec_text              = var.spn_main_instance_consumer_db_backup.cron_spec_text
-  use_full_backup_spec        = var.spn_main_instance_consumer_db_backup.use_full_backup_spec
-  use_incremental_backup_spec = var.spn_main_instance_consumer_db_backup.use_incremental_backup_spec
+  use_full_backup_spec        = coalesce(var.spn_main_instance_consumer_db_backup.use_full_backup_spec, false)
+  use_incremental_backup_spec = coalesce(var.spn_main_instance_consumer_db_backup.use_incremental_backup_spec, false)
 }
 
 # PSC NEG Northbound

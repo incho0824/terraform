@@ -139,8 +139,13 @@ variable "spn_main_instance" {
   - instance_config: Instance configuration name (region placement & replication).
   - edition: Edition of the Spanner instance (nullable).
   - num_nodes: Number of allocated nodes (nullable, mutually exclusive with processing_units and autoscaling_config unless instance_type=FREE_INSTANCE).
+  - processing_units: Number of processing units (nullable).
   - instance_type: Type of instance (PROVISIONED or FREE_INSTANCE).
   - enable_autoscaling: Boolean to enable autoscaling.
+  - min_processing_units: Minimum processing units for autoscaling (nullable).
+  - max_processing_units: Maximum processing units for autoscaling (nullable).
+  - high_priority_cpu_utilization_percent: Target high priority CPU utilization (nullable).
+  - storage_utilization_percent: Target storage utilization (nullable).
   - default_backup_schedule_type: Default backup schedule type for new databases ("NONE" by default).
   - force_destroy: Boolean to force deletion of the instance and backups.
   EOT
@@ -148,8 +153,13 @@ variable "spn_main_instance" {
     instance_config              = string
     edition                      = optional(string)
     num_nodes                    = optional(number)
+    processing_units             = optional(number)
     instance_type                = optional(string)
     enable_autoscaling           = bool
+    min_processing_units         = optional(number)
+    max_processing_units         = optional(number)
+    high_priority_cpu_utilization_percent = optional(number)
+    storage_utilization_percent  = optional(number)
     default_backup_schedule_type = optional(string, "NONE")
     force_destroy                = optional(bool, false)
   })
@@ -164,10 +174,6 @@ variable "spn_main_instance_consumer_db_backup" {
   - cron_spec_text: The CRON spec text defining the schedule.
   - use_full_backup_spec: Boolean indicating whether to use a full backup specification (default null).
   - use_incremental_backup_spec: Boolean indicating whether to use incremental backup specification (default null).
-  - encryption_config: Nested object for encryption settings.
-      - encryption_type: (Required) Type of encryption. One of USE_DATABASE_ENCRYPTION, GOOGLE_DEFAULT_ENCRYPTION, CUSTOMER_MANAGED_ENCRYPTION.
-      - kms_key_name: (Optional) Resource name of the Cloud KMS key to use for encryption.
-      - kms_key_names: (Optional) Fully qualified name(s) of the KMS keys to use.
   EOT
 
   type = object({
@@ -175,11 +181,6 @@ variable "spn_main_instance_consumer_db_backup" {
     cron_spec_text              = string
     use_full_backup_spec        = optional(bool, null)
     use_incremental_backup_spec = optional(bool, null)
-    encryption_config = optional(object({
-      encryption_type = string
-      kms_key_name    = optional(string)
-      kms_key_names   = optional(list(string))
-    }))
   })
 }
 
@@ -195,6 +196,7 @@ variable "spn_main_instance_consumer_db" {
       - kms_key_names: (Optional) List of fully qualified KMS keys.
   - database_dialect: (Optional) GOOGLE_STANDARD_SQL or POSTGRESQL.
   - enable_drop_protection: (Optional) Enable drop protection.
+  - ddl: (Optional) List of DDL statements to apply at create time.
   - deletion_protection: (Optional) Prevent Terraform from deleting the database.
   - default_time_zone: (Optional) Default TZ database name. 
   EOT
@@ -208,6 +210,7 @@ variable "spn_main_instance_consumer_db" {
     }), null)
     database_dialect       = optional(string, "GOOGLE_STANDARD_SQL")
     enable_drop_protection = optional(bool)
+    ddl                    = optional(list(string), [])
     deletion_protection    = optional(bool)
     default_time_zone      = optional(string)
   })
