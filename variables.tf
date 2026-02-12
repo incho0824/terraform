@@ -1,3 +1,22 @@
+
+variable "cloud_foundation_fabric_version" {
+  description = "Version (git ref) for GoogleCloudPlatform/cloud-foundation-fabric modules"
+  type        = string
+  default     = "v52.0.0"
+}
+
+variable "cloud_spanner_module_version" {
+  description = "Version (git ref) for GoogleCloudPlatform/terraform-google-cloud-spanner modules"
+  type        = string
+  default     = "v1.2.1"
+}
+
+variable "cloud_storage_module_version" {
+  description = "Version (git ref) for terraform-google-modules/terraform-google-cloud-storage modules"
+  type        = string
+  default     = "v11.0.0"
+}
+
 variable "project_id" {
   type        = string
   description = "Project ID"
@@ -150,18 +169,18 @@ variable "spn_main_instance" {
   - force_destroy: Boolean to force deletion of the instance and backups.
   EOT
   type = object({
-    instance_config              = string
-    edition                      = optional(string)
-    num_nodes                    = optional(number)
-    processing_units             = optional(number)
-    instance_type                = optional(string)
-    enable_autoscaling           = bool
-    min_processing_units         = optional(number)
-    max_processing_units         = optional(number)
+    instance_config                       = string
+    edition                               = optional(string)
+    num_nodes                             = optional(number)
+    processing_units                      = optional(number)
+    instance_type                         = optional(string)
+    enable_autoscaling                    = bool
+    min_processing_units                  = optional(number)
+    max_processing_units                  = optional(number)
     high_priority_cpu_utilization_percent = optional(number)
-    storage_utilization_percent  = optional(number)
-    default_backup_schedule_type = optional(string, "NONE")
-    force_destroy                = optional(bool, false)
+    storage_utilization_percent           = optional(number)
+    default_backup_schedule_type          = optional(string, "NONE")
+    force_destroy                         = optional(bool, false)
   })
 }
 

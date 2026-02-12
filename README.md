@@ -74,3 +74,19 @@ terraform init
 terraform plan
 terraform apply
 ```
+
+
+## Running with OpenTofu
+
+A sample variable file is included at `sample.tfvars`. You can copy and adjust values for your environment.
+
+```bash
+cp sample.tfvars terraform.tfvars
+# optional: override module refs
+# cloud_foundation_fabric_version = "v52.0.0"
+# cloud_spanner_module_version    = "v1.2.1"
+# cloud_storage_module_version    = "v11.0.0"
+tofu init
+tofu plan -var-file=sample.tfvars -refresh=false
+```
+
