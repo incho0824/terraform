@@ -28,6 +28,7 @@ locals {
   modules_source_repo            = "git::https://github.com/The-Coca-Cola-Company/consumer-terraform-modules.git//opentofu/modules"
   gcs_bucket_module_source       = "git::https://github.com/terraform-google-modules/terraform-google-cloud-storage.git//modules/simple_bucket?ref=v11.0.0"
   secret_manager_module_source   = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/secret-manager?ref=v52.0.0"
+  firestore_module_source        = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/firestore?ref=v52.0.0"
 
   # Global External Application LB - Marketing API Edge 
   marketing_api_edge_serverless_backend_services = {
@@ -817,18 +818,19 @@ module "gcs_processor_configs" {
  
 # Firestore - Privacy
 module "fs_main_database" {
-  source                            = "${local.modules_source_repo}/firestore"
-  project_id                        = var.project_id
-  name                              = "${local.resource_name_prefix_global}-fs-main-database"
-  location                          = var.fs_main_database.location
-  database_type                     = var.fs_main_database.database_type
-  database_edition                  = var.fs_main_database.database_edition
-  concurrency_mode                  = var.fs_main_database.concurrency_mode
-  app_engine_integration_mode       = var.fs_main_database.app_engine_integration_mode
-  point_in_time_recovery_enablement = var.fs_main_database.point_in_time_recovery_enablement
-  delete_protection_state           = var.fs_main_database.delete_protection_state
-  deletion_policy                   = var.fs_main_database.deletion_policy
-  kms_key_name                      = var.fs_main_database.kms_key_name
+  source     = local.firestore_module_source
+  project_id = var.project_id
+  database = {
+    name                              = "${local.resource_name_prefix_global}-fs-main-database"
+    location_id                       = var.fs_main_database.location
+    type                              = var.fs_main_database.database_type
+    concurrency_mode                  = var.fs_main_database.concurrency_mode
+    app_engine_integration_mode       = var.fs_main_database.app_engine_integration_mode
+    point_in_time_recovery_enablement = var.fs_main_database.point_in_time_recovery_enablement
+    delete_protection_state           = var.fs_main_database.delete_protection_state
+    deletion_policy                   = var.fs_main_database.deletion_policy
+    kms_key_name                      = var.fs_main_database.kms_key_name
+  }
 }
 
 module "spn_main_instance" {
