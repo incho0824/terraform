@@ -11,22 +11,22 @@ variable "cloud_spanner_module_version" {
   default     = "v1.2.1"
 }
 
-variable "cloud_armor_module_version" {
-  description = "Version (git ref) for GoogleCloudPlatform/terraform-google-cloud-armor module"
-  type        = string
-  default     = "v7.0.0"
-}
-
 variable "cloud_storage_module_version" {
   description = "Version (git ref) for terraform-google-modules/terraform-google-cloud-storage modules"
   type        = string
-  default     = "v11.0.0"
+  default     = "v12.0.0"
 }
 
 variable "memorystore_module_version" {
   description = "Version (git ref) for terraform-google-modules/terraform-google-memorystore modules"
   type        = string
-  default     = "v16.0.0"
+  default     = "v15.1.0"
+}
+
+variable "cloud_armor_module_version" {
+  description = "Version (git ref) for GoogleCloudPlatform/terraform-google-cloud-armor module"
+  type        = string
+  default     = "v6.0.0"
 }
 
 variable "project_id" {
