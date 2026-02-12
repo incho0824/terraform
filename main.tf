@@ -36,6 +36,8 @@ locals {
   certificate_manager_module_source = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/certificate-manager?ref=v52.0.0"
   spanner_instance_module_source = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/spanner-instance?ref=v52.0.0"
   spanner_backup_module_source   = "git::https://github.com/GoogleCloudPlatform/terraform-google-cloud-spanner.git//modules/schedule_spanner_backup?ref=v1.2.1"
+  cloud_armor_module_source      = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-cloud-armor?ref=v52.0.0"
+  memorystore_valkey_module_source = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/memorystore?ref=v52.0.0"
 
   # Global External Application LB - Marketing API Edge 
   marketing_api_edge_serverless_backend_services = {
@@ -908,7 +910,7 @@ module "ip_marketing_api_edge" {
 
 # Cloud Armor - ca-marketing-api-security
 module "ca_marketing_api_security" {
-  source           = "${local.modules_source_repo}/cloud_armor"
+  source           = local.cloud_armor_module_source
   project_id       = var.project_id
   cloud_armor_name = "${local.resource_name_prefix_global}-ca-marketing-api-security"
 }
@@ -983,28 +985,28 @@ module "lb_marketing_api_edge" {
 
 # Cloud Armor - ca-message-api-security
 module "ca_message_api_security" {
-  source           = "${local.modules_source_repo}/cloud_armor"
+  source           = local.cloud_armor_module_source
   project_id       = var.project_id
   cloud_armor_name = "${local.resource_name_prefix_global}-ca-message-api-security"
 }
 
 # Cloud Armor - ca-internal-api-security
 module "internal_api_security" {
-  source           = "${local.modules_source_repo}/cloud_armor"
+  source           = local.cloud_armor_module_source
   project_id       = var.project_id
   cloud_armor_name = "${local.resource_name_prefix_global}-internal-api-security"
 }
 
 # Cloud Armor - ca-privacy-api-security
 module "privacy_api_security" {
-  source           = "${local.modules_source_repo}/cloud_armor"
+  source           = local.cloud_armor_module_source
   project_id       = var.project_id
   cloud_armor_name = "${local.resource_name_prefix_global}-privacy-api-security"
 }
 
 # Cloud Armor - ca-prospect-api-security
 module "prospect_api_security" {
-  source           = "${local.modules_source_repo}/cloud_armor"
+  source           = local.cloud_armor_module_source
   project_id       = var.project_id
   cloud_armor_name = "${local.resource_name_prefix_global}-prospect-api-security"
 }
@@ -1019,7 +1021,7 @@ module "ip_dedicated_api_edge" {
 
 # Cloud Armor - ca-aad-b2c-api-security
 module "ca_aad_b2c_api_security" {
-  source           = "${local.modules_source_repo}/cloud_armor"
+  source           = local.cloud_armor_module_source
   project_id       = var.project_id
   cloud_armor_name = "${local.resource_name_prefix_global}-ca-aad-b2c-api-security"
 }
@@ -1156,7 +1158,7 @@ module "ip_marketing_ilb_secondary" {
 # Valkey Memorystore
 module "vkey_main_primary" {
   count                         = local.deploy_primary ? 1 : 0
-  source                        = "${local.modules_source_repo}/memorystore_valkey"
+  source                        = local.memorystore_valkey_module_source
   project_id                    = var.project_id
   network_project               = var.network_project_id
   instance_id                   = "${local.resource_name_prefix_primary}-vkey-main"
@@ -1349,7 +1351,7 @@ module "service_attachment_marketing_primary" {
 
 # [SECONDARY START]
 module "vkey_main_secondary" {
-  source                        = "${local.modules_source_repo}/memorystore_valkey"
+  source                        = local.memorystore_valkey_module_source
   count                         = local.deploy_secondary ? 1 : 0
   project_id                    = var.project_id
   network_project               = var.network_project_id
