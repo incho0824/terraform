@@ -36,7 +36,7 @@ locals {
   certificate_manager_module_source                       = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/certificate-manager?ref=${var.cloud_foundation_fabric_version}"
   spanner_instance_module_source                          = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/spanner-instance?ref=${var.cloud_foundation_fabric_version}"
   spanner_backup_module_source                            = "git::https://github.com/GoogleCloudPlatform/terraform-google-cloud-spanner.git//modules/schedule_spanner_backup?ref=${var.cloud_spanner_module_version}"
-  cloud_armor_module_source                               = "git::https://github.com/GoogleCloudPlatform/cloud-foundation-fabric.git//modules/net-cloud-armor?ref=${var.cloud_foundation_fabric_version}"
+  cloud_armor_module_source                               = "git::https://github.com/GoogleCloudPlatform/terraform-google-cloud-armor.git?ref=${var.cloud_armor_module_version}"
   memorystore_valkey_module_source                        = "git::https://github.com/terraform-google-modules/terraform-google-memorystore.git//modules/valkey?ref=${var.memorystore_module_version}"
 
 
@@ -785,7 +785,7 @@ module "ip_marketing_api_edge" {
 module "ca_marketing_api_security" {
   source           = local.cloud_armor_module_source
   project_id       = var.project_id
-  cloud_armor_name = "${local.resource_name_prefix_global}-ca-marketing-api-security"
+  name             = "${local.resource_name_prefix_global}-ca-marketing-api-security"
 }
 
 module "certificate_manager_marketing_api_edge" {
@@ -860,28 +860,28 @@ module "lb_marketing_api_edge" {
 module "ca_message_api_security" {
   source           = local.cloud_armor_module_source
   project_id       = var.project_id
-  cloud_armor_name = "${local.resource_name_prefix_global}-ca-message-api-security"
+  name             = "${local.resource_name_prefix_global}-ca-message-api-security"
 }
 
 # Cloud Armor - ca-internal-api-security
 module "internal_api_security" {
   source           = local.cloud_armor_module_source
   project_id       = var.project_id
-  cloud_armor_name = "${local.resource_name_prefix_global}-internal-api-security"
+  name             = "${local.resource_name_prefix_global}-internal-api-security"
 }
 
 # Cloud Armor - ca-privacy-api-security
 module "privacy_api_security" {
   source           = local.cloud_armor_module_source
   project_id       = var.project_id
-  cloud_armor_name = "${local.resource_name_prefix_global}-privacy-api-security"
+  name             = "${local.resource_name_prefix_global}-privacy-api-security"
 }
 
 # Cloud Armor - ca-prospect-api-security
 module "prospect_api_security" {
   source           = local.cloud_armor_module_source
   project_id       = var.project_id
-  cloud_armor_name = "${local.resource_name_prefix_global}-prospect-api-security"
+  name             = "${local.resource_name_prefix_global}-prospect-api-security"
 }
 
 # [ Dedicated API Edge START ]
@@ -898,7 +898,7 @@ module "ip_dedicated_api_edge" {
 module "ca_aad_b2c_api_security" {
   source           = local.cloud_armor_module_source
   project_id       = var.project_id
-  cloud_armor_name = "${local.resource_name_prefix_global}-ca-aad-b2c-api-security"
+  name             = "${local.resource_name_prefix_global}-ca-aad-b2c-api-security"
 }
 
 module "certificate_manager_dedicated_api_edge" {
