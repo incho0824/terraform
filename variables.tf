@@ -2,7 +2,7 @@
 variable "cloud_foundation_fabric_version" {
   description = "Version (git ref) for GoogleCloudPlatform/cloud-foundation-fabric modules"
   type        = string
-  default     = "v52.0.0"
+  default     = "v45.0.0"
 }
 
 variable "cloud_spanner_module_version" {
@@ -425,4 +425,34 @@ variable "internal_services_hostname" {
 variable "aadb2c_services_hostname" {
   type        = string
   description = "AADB2C Services Hostname"
+}
+
+variable "region_by_geo_type" {
+  description = "Mapping of geo type to primary and secondary regions"
+  type = map(object({
+    PRIMARY   = string
+    SECONDARY = string
+  }))
+
+  default = {
+    PRODUCT = {
+      PRIMARY   = "us-central1"
+      SECONDARY = "us-east1"
+    }
+  }
+}
+
+variable "zone_by_geo_type" {
+  description = "Mapping of geo type to primary and secondary zones"
+  type = map(object({
+    PRIMARY   = string
+    SECONDARY = string
+  }))
+
+  default = {
+    PRODUCT = {
+      PRIMARY   = "us-central1-a"
+      SECONDARY = "us-east1-b"
+    }
+  }
 }
