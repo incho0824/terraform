@@ -20,7 +20,7 @@ variable "cloud_storage_module_version" {
 variable "memorystore_module_version" {
   description = "Version (git ref) for terraform-google-modules/terraform-google-memorystore modules"
   type        = string
-  default     = "v15.1.0"
+  default     = "v16.0.0"
 }
 
 variable "cloud_armor_module_version" {
